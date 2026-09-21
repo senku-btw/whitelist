@@ -1,3 +1,52 @@
 sourceforge.net
 ocsp.usertrust.com
 voe.sx
+appleid.apple.com
+dl.dropbox.com
+dl.dropboxusercontent.com
+fonts.gstatic.com
+github.com
+github.io
+gravatar.com
+raw.githubusercontent.com
+
+# Amazon Kindle
+cognito-identity.us-east-1.amazonaws.com
+unagi-na.amazon.com
+ocsp.rootg2.amazontrust.com
+det-ta-g7g.amazon.com
+todo-ta-g7g.amazon.com
+device-messaging-na.amazon.com
+s3-eu-west-1.amazonaws.com
+us-east-1.amazonaws.com
+
+# GeForce Experience
+events.gfe.nvidia.com
+gfwsl.geforce.com
+
+# Nvidia updates
+ota-downloads.nvidia.com
+
+# URL shorteners
+t.ly
+adf.ly
+www.adf.ly
+bit.ly
+www.bit.ly
+goo.gl
+ow.ly
+www.ow.ly
+amzn.to
+amzn.com
+
+# Host files
+hosts-file.net
+raw.githubusercontent.com
+v.firebog.net
+hostsfile.org
+someonewhocares.org
+hostsfile.mine.nu
+winhelp2002.mvps.org
+sysctl.org
+pgl.yoyo.org
+zeustracker.abuse.ch
