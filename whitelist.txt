@@ -1,0 +1,3 @@
+sourceforge.net
+ocsp.usertrust.com
+voe.sx
