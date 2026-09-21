@@ -1,14 +1,20 @@
 sourceforge.net
 ocsp.usertrust.com
 voe.sx
+fonts.gstatic.com
+gravatar.com
+
+# Apple
 appleid.apple.com
+
+# Dropbox
 dl.dropbox.com
 dl.dropboxusercontent.com
-fonts.gstatic.com
+
+# Github
+raw.githubusercontent.com
 github.com
 github.io
-gravatar.com
-raw.githubusercontent.com
 
 # Amazon Kindle
 cognito-identity.us-east-1.amazonaws.com
