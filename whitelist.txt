@@ -3,13 +3,36 @@ ocsp.usertrust.com
 voe.sx
 fonts.gstatic.com
 gravatar.com
+jsdelivr.net
+
+
+# Android
+android.clients.google.com
+0.client-channel.google.com
+appsbackup-pa.clients6.google.com
+appsbackup-pa.googleapis.com
+clients1.google.com
+clients2.google.com
+clients3.google.com
+clients4.google.com
+clients5.google.com
+clients6.google.com
+googleapis.com
+instantmessaging-pa.googleapis.com
+www.googleapis.com
+connectivitycheck.gstatic.com
+connectivitycheck.android.com
+appspot-preview.l.google.com
 
 # Apple
 appleid.apple.com
+ax.phobos.apple.com.edgesuite.net
 
 # Dropbox
 dl.dropbox.com
 dl.dropboxusercontent.com
+ns1.dropbox.com
+ns2.dropbox.com
 
 # Github
 raw.githubusercontent.com
