@@ -5,7 +5,6 @@ fonts.gstatic.com
 gravatar.com
 jsdelivr.net
 
-
 # Android
 android.clients.google.com
 0.client-channel.google.com
