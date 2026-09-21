@@ -7,6 +7,7 @@ jsdelivr.net
 _https._tcp.pkgs.tailscale.com
 pkgs.tailscale.com
 controlplane.tailscale.com
+
 # Android
 android.clients.google.com
 0.client-channel.google.com
@@ -25,6 +26,8 @@ connectivitycheck.gstatic.com
 connectivitycheck.android.com
 appspot-preview.l.google.com
 lh3.googleusercontent.com
+history.google.com
+
 
 # Apple
 appleid.apple.com
