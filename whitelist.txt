@@ -4,7 +4,9 @@ voe.sx
 fonts.gstatic.com
 gravatar.com
 jsdelivr.net
-
+_https._tcp.pkgs.tailscale.com
+pkgs.tailscale.com
+controlplane.tailscale.com
 # Android
 android.clients.google.com
 0.client-channel.google.com
@@ -22,6 +24,7 @@ www.googleapis.com
 connectivitycheck.gstatic.com
 connectivitycheck.android.com
 appspot-preview.l.google.com
+lh3.googleusercontent.com
 
 # Apple
 appleid.apple.com
