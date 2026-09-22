@@ -1,6 +1,0 @@
-b.thumbs.redditmedia.com
-reddit.com
-redditstatic.com
-styles.redditmedia.com
-www.reddit.com
-www.redditstatic.com
