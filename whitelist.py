@@ -3,6 +3,8 @@ import sqlite3
 import sys
 import re
 import unicodedata
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, List
 
@@ -86,8 +88,8 @@ def extract_whitelists(db_path: Path, output_dir: Path) -> None:
 
 def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> None:
     """
-    Ensures the filesystem strictly mirrors the database by first purging all existing 
-    files in the target directory, then writing the updated, deduplicated, and sorted entries.
+    Ensures the filesystem strictly mirrors the database by purging all existing 
+    files in the target directory, then writing updated, deduplicated, and sorted entries.
     """
     # Step 1: Wipe existing files to reflect deleted categories from the database
     try:
@@ -114,10 +116,43 @@ def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> No
         except OSError:
             sys.exit(1)
 
+def git_push_changes(repo_dir: Path) -> None:
+    """
+    Stages all changes, checks for modifications, and commits/pushes to the git 
+    repository using a UTC timestamp format (e.g. '22/09/2026 - 1:32 AM').
+    """
+    try:
+        # Construct exact UTC timestamp: "DD/MM/YYYY - H:MM AM/PM"
+        now_utc = datetime.now(timezone.utc)
+        hour_12 = now_utc.hour % 12 or 12
+        am_pm = "AM" if now_utc.hour < 12 else "PM"
+        commit_message = f"{now_utc.strftime('%d/%m/%Y')} - {hour_12}:{now_utc.strftime('%M')} {am_pm}"
+
+        # Stage all changes
+        subprocess.run(["git", "add", "-A"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        # Check if there are uncommitted changes staged
+        status = subprocess.run(
+            ["git", "status", "--porcelain"], 
+            cwd=repo_dir, 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+
+        # Commit and push if modifications exist
+        if status.stdout.strip():
+            subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["git", "push"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    except (subprocess.SubprocessError, OSError):
+        sys.exit(1)
+
 if __name__ == "__main__":
     current_dir = Path(__file__).parent.resolve()
     whitelists_dir = current_dir / "whitelists"
     gravity_db = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
     
     extract_whitelists(gravity_db, whitelists_dir)
+    git_push_changes(current_dir)
     sys.exit(0)
