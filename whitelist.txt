@@ -1,8 +1,13 @@
-sourceforge.net
-ocsp.usertrust.com
-voe.sx
+# Software & Open-Source Infrastructure
 jsdelivr.net
+sourceforge.net
 
-# Adblock Testers
+# Digital Certificates
+ocsp.usertrust.com
+
+# Media Streaming
+voe.sx
+
+# Adblock Testing
 mobileproxy.space
 getblockify.com
