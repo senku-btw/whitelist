@@ -42,8 +42,10 @@ def sanitize_domain(domain: str) -> str:
 
     # 2. Strip non-printable control characters (C) and space separators (Zs)
     domain = "".join(
-        ch for ch in domain
-        if not unicodedata.category(ch).startswith("C") and unicodedata.category(ch) != "Zs"
+        ch
+        for ch in domain
+        if not unicodedata.category(ch).startswith("C")
+        and unicodedata.category(ch) != "Zs"
     )
 
     # 3. Outer trim and lowercase
@@ -134,7 +136,9 @@ def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> Non
                 f.write(f"{domain}\n")
 
 
-def write_whitelists_atomically(categories: Dict[str, Set[str]], target_dir: Path) -> None:
+def write_whitelists_atomically(
+    categories: Dict[str, Set[str]], target_dir: Path
+) -> None:
     """
     Performs a true atomic directory swap to guarantee filesystem integrity.
     Merges existing 'hosts' file to ensure append-only immutability.
