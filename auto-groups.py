@@ -1,11 +1,14 @@
 import sqlite3
 import re
 import time
+import sys
+import fcntl
 from pathlib import Path
 from types import MappingProxyType
 
-# Define the target database path
+# Define paths
 DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
+LOCK_FILE_PATH = Path("/tmp/pihole_group_sync.lock")
 
 # Define immutable set of groups to skip
 SKIPPED_GROUPS = frozenset([
@@ -40,6 +43,17 @@ def clean_to_title_case(text: str) -> str:
     return clean
 
 def main():
+    # -------------------------------------------------------------
+    # Single-Instance Enforcement via File Locking
+    # -------------------------------------------------------------
+    lock_file = open(LOCK_FILE_PATH, "w")
+    try:
+        # Try to acquire a non-blocking exclusive lock
+        fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        print("ERROR: Another instance of this script is already running. Exiting.")
+        sys.exit(1)
+
     if not DB_PATH.exists():
         print(f"Database not found at {DB_PATH}")
         return
@@ -145,6 +159,8 @@ def main():
         print(f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}")
     finally:
         conn.close()
+        # Release the lock file handle automatically upon exit
+        lock_file.close()
 
 if __name__ == "__main__":
     main()
