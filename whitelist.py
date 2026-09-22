@@ -168,7 +168,7 @@ def write_whitelists_atomically(categories: Dict[str, Set[str]], target_dir: Pat
 
 def git_sync(repo_dir: Path) -> None:
     """
-    Stages all changes and pushes via a random 7-character hex ID.
+    Pulls upstream changes, stages all changes, and pushes via a random 7-character hex ID.
     Enforces strict subprocess timeouts to prevent environment lockups.
     """
     if not (repo_dir / ".git").is_dir():
@@ -183,6 +183,16 @@ def git_sync(repo_dir: Path) -> None:
             pass
 
     try:
+        # Pull upstream changes to prevent push conflicts
+        subprocess.run(
+            ["git", "pull", "--rebase", "--autostash"],
+            cwd=repo_dir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30.0,
+        )
+
         subprocess.run(
             ["git", "add", "-A"],
             cwd=repo_dir,
