@@ -1,81 +1,68 @@
 #!/usr/bin/env python3
 import sqlite3
 import sys
-import logging
 import re
 import unicodedata
 from pathlib import Path
 from typing import Dict, List
 
-# Configure production-grade logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
-logger = logging.getLogger(__name__)
-
 def sanitize_filename(filename: str) -> str:
     """
-    Sanitizes a string to be used as a valid, safe file name.
+    Sanitizes a string to be used as a safe filesystem name.
     """
     sanitized = re.sub(r'[\\/*?:"<>|]', "", filename)
-    sanitized = sanitized.strip().replace(" ", "_")
-    return sanitized
+    return sanitized.strip().replace(" ", "_")
 
 def sanitize_domain(domain: str) -> str:
     """
-    Fully sanitizes a domain entry by removing invisible unicode characters,
-    zero-width spaces, control characters, trailing paths, and invalid domain chars.
+    Fully sanitizes a domain entry by normalizing Unicode, removing invisible 
+    control/space characters, stripping protocols/paths, and enforcing standard domain chars.
     """
     if not domain:
         return ""
     
-    # 1. Normalize Unicode
+    # 1. Normalize Unicode (NFKC)
     domain = unicodedata.normalize("NFKC", domain)
     
-    # 2. Filter out non-printable, control, and non-standard space characters
+    # 2. Strip non-printable control characters (C) and space separators (Zs)
     domain = "".join(
         ch for ch in domain 
         if not unicodedata.category(ch).startswith("C") and unicodedata.category(ch) != "Zs"
     )
     
-    # 3. Strip remaining outer whitespace and convert to lowercase
+    # 3. Outer trim and lowercase
     domain = domain.strip().lower()
     
-    # 4. Remove protocol prefixes if accidentally recorded
+    # 4. Strip protocol
     domain = re.sub(r"^https?://", "", domain)
     
-    # 5. Remove URI path, query params, or anchors
+    # 5. Strip URI paths, parameters, anchors
     domain = domain.split("/")[0].split("?")[0].split("#")[0]
     
-    # 6. Remove invalid domain characters
+    # 6. Filter out invalid domain characters
     domain = re.sub(r"[^a-z0-9\.\-\_\*]", "", domain)
     
-    # 7. Strip leading/trailing dots and hyphens
-    domain = domain.strip(".-")
-    
-    return domain
+    # 7. Trim boundary dots/hyphens
+    return domain.strip(".-")
 
 def extract_whitelists(db_path: Path, output_dir: Path) -> None:
     """
-    Connects to gravity.db, extracts exact whitelists, sanitizes entries, and writes them to files.
+    Reads exact whitelists from gravity.db, categorizes them, sanitizes entries, 
+    and writes each group to its respective output file.
     """
     if not db_path.is_file():
-        logger.error(f"Database file not found at {db_path}.")
         sys.exit(1)
 
-    # Ensure the target "whitelists" directory exists
     output_dir.mkdir(parents=True, exist_ok=True)
 
     categories: Dict[str, List[str]] = {}
     
     try:
-        logger.info(f"Connecting to database at {db_path}")
         uri = f"file:{db_path.resolve()}?mode=ro"
         with sqlite3.connect(uri, uri=True) as conn:
             cursor = conn.cursor()
             
+            # Type 0 = Exact Whitelist in Pi-hole domainlist
             query = "SELECT domain, comment FROM domainlist WHERE type = 0"
             cursor.execute(query)
             
@@ -84,55 +71,39 @@ def extract_whitelists(db_path: Path, output_dir: Path) -> None:
                 
                 cleaned_domain = sanitize_domain(raw_domain)
                 if not cleaned_domain:
-                    logger.warning(f"Skipping empty/invalid domain entry after sanitization: '{raw_domain}'")
                     continue
                 
-                if not comment or not comment.strip():
-                    category_name = ""
-                else:
-                    category_name = comment.strip()
+                category_name = comment.strip() if comment and comment.strip() else ""
                 
                 if category_name not in categories:
                     categories[category_name] = []
                 categories[category_name].append(cleaned_domain)
                 
-    except sqlite3.Error as e:
-        logger.error(f"Database error occurred: {e}")
+    except sqlite3.Error:
         sys.exit(1)
 
-    total_domains = sum(len(domains) for domains in categories.values())
-    logger.info(f"Found {total_domains} valid exact whitelist entries across {len(categories)} categories.")
     write_output_files(categories, output_dir)
 
 def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> None:
     """
-    Writes the categorized domains into separate text files inside output_dir.
-    Applies a frozenset for immutable deduplication, sorts alphabetically, 
-    and always overwrites existing files.
+    Deduplicates entries via frozenset, sorts them alphabetically, 
+    and writes each domain to its own distinct line, completely overwriting prior files.
     """
     for comment, domains in categories.items():
-        if not comment:
-            file_path = output_dir / "whitelist.txt"
-            file_name_log = "whitelist.txt"
-        else:
-            safe_name = sanitize_filename(comment)
-            file_path = output_dir / f"{safe_name}.txt"
-            file_name_log = f"{safe_name}.txt"
+        file_name = "whitelist.txt" if not comment else f"{sanitize_filename(comment)}.txt"
+        file_path = output_dir / file_name
 
         try:
-            # Enforce strict deduplication using an immutable frozenset, 
-            # then sort the results alphabetically into a list.
+            # Enforce immutable deduplication and alphabetical order
             unique_domains = sorted(frozenset(domains))
 
-            # Always overwrite ("w") to ensure the file reflects the current database state exactly.
-            with file_path.open("w", encoding="utf-8") as f:
+            # Always overwrite ("w") and enforce standard Unix newline ("\n")
+            with file_path.open("w", encoding="utf-8", newline="\n") as f:
                 for domain in unique_domains:
                     f.write(f"{domain}\n")
-            
-            logger.info(f"Saved {len(unique_domains):<4} unique domain(s) to whitelists/{file_name_log} (overwritten)")
-            
-        except OSError as e:
-            logger.error(f"Failed to write to {file_path}: {e}")
+                    
+        except OSError:
+            sys.exit(1)
 
 if __name__ == "__main__":
     current_dir = Path(__file__).parent.resolve()
@@ -140,4 +111,4 @@ if __name__ == "__main__":
     gravity_db = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
     
     extract_whitelists(gravity_db, whitelists_dir)
-    logger.info("Export completed successfully.")
+    sys.exit(0)
