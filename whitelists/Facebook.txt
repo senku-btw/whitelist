@@ -28,8 +28,6 @@ facebook.com
 facebook.net
 fbcdn-creative-a.akamaihd.net
 fbcdn.net
-graph.facebook.com
-graph.instagram.com
 instagram.c10r.facebook.com
 m.facebook.com
 mqtt-mini.facebook.com
