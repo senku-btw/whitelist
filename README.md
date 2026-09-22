@@ -3,7 +3,7 @@
 
 ### Sources
 
-- [ ]https://github.com/GoodnessJSON/PiHole-Whitelist
+- [ ] https://github.com/GoodnessJSON/PiHole-Whitelist
 - [ ] https://github.com/anudeepND/whitelist
 - [ ] https://github.com/rahilpathan/pihole-whitelist/tree/main
 - [ ] https://github.com/TJohnson93/PiHoleWhiteLists
