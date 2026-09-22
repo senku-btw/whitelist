@@ -1,58 +1,7 @@
 sourceforge.net
 ocsp.usertrust.com
 voe.sx
-fonts.gstatic.com
-gravatar.com
 jsdelivr.net
-_https._tcp.pkgs.tailscale.com
-pkgs.tailscale.com
-controlplane.tailscale.com
-
-# Android
-android.clients.google.com
-0.client-channel.google.com
-appsbackup-pa.clients6.google.com
-appsbackup-pa.googleapis.com
-clients1.google.com
-clients2.google.com
-clients3.google.com
-clients4.google.com
-clients5.google.com
-clients6.google.com
-googleapis.com
-instantmessaging-pa.googleapis.com
-www.googleapis.com
-connectivitycheck.gstatic.com
-connectivitycheck.android.com
-appspot-preview.l.google.com
-lh3.googleusercontent.com
-history.google.com
-
-
-# Apple
-appleid.apple.com
-ax.phobos.apple.com.edgesuite.net
-
-# Dropbox
-dl.dropbox.com
-dl.dropboxusercontent.com
-ns1.dropbox.com
-ns2.dropbox.com
-
-# Github
-raw.githubusercontent.com
-github.com
-github.io
-
-# Amazon Kindle
-cognito-identity.us-east-1.amazonaws.com
-unagi-na.amazon.com
-ocsp.rootg2.amazontrust.com
-det-ta-g7g.amazon.com
-todo-ta-g7g.amazon.com
-device-messaging-na.amazon.com
-s3-eu-west-1.amazonaws.com
-us-east-1.amazonaws.com
 
 # GeForce Experience
 events.gfe.nvidia.com
@@ -60,18 +9,6 @@ gfwsl.geforce.com
 
 # Nvidia updates
 ota-downloads.nvidia.com
-
-# URL shorteners
-t.ly
-adf.ly
-www.adf.ly
-bit.ly
-www.bit.ly
-goo.gl
-ow.ly
-www.ow.ly
-amzn.to
-amzn.com
 
 # Host files
 hosts-file.net
