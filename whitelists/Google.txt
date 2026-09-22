@@ -1,2 +1,8 @@
+chrome.google.com
+dl.google.com
 fonts.gstatic.com
+google.com
 lh3.googleusercontent.com
+oauthaccountmanager.googleapis.com
+reminders-pa.googleapis.com
+webcache.googleusercontent.com

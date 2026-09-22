@@ -11,6 +11,7 @@ clients5.google.com
 clients6.google.com
 connectivitycheck.android.com
 connectivitycheck.gstatic.com
+firestore.googleapis.com
 googleapis.com
 instantmessaging-pa.googleapis.com
 www.googleapis.com

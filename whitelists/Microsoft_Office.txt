@@ -1,0 +1,4 @@
+office.com
+office.net
+office365.com
+officeclient.microsoft.com

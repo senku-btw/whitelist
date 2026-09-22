@@ -1,0 +1,4 @@
+ctldl.windowsupdate.com
+dns.msftncsi.com
+msftncsi.com
+www.msftncsi.com

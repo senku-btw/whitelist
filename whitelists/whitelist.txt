@@ -1,0 +1,4 @@
+cdnjs.cloudflare.com
+jsdelivr.net
+placehold.it
+placeholdit.imgix.net

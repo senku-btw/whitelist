@@ -1,11 +1,15 @@
 history.google.com
 i.ytimg.com
+i1.ytimg.com
+manifest.googlevideo.com
 redirector.googlevideo.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
+video-stats.l.google.com
 www.youtube-nocookie.com
 youtu.be
 youtube-nocookie.com
 youtube.com
+youtubei.googleapis.com
 yt3.ggpht.com
