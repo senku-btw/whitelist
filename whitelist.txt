@@ -10,6 +10,10 @@ gfwsl.geforce.com
 # Nvidia updates
 ota-downloads.nvidia.com
 
+# Adblock Testers
+mobileproxy.space
+getblockify.com
+
 # Host files
 hosts-file.net
 raw.githubusercontent.com
