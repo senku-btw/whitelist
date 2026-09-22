@@ -2,18 +2,21 @@
 import sqlite3
 import sys
 import re
+import shutil
+import tempfile
 import unicodedata
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, Set
 
 def sanitize_filename(filename: str) -> str:
     """
     Sanitizes a string to be used as a safe filesystem name.
     """
     sanitized = re.sub(r'[\\/*?:"<>|]', "", filename)
-    return sanitized.strip().replace(" ", "_")
+    sanitized = sanitized.strip().replace(" ", "_")
+    return sanitized if sanitized else "unnamed_category"
 
 def sanitize_domain(domain: str) -> str:
     """
@@ -47,109 +50,132 @@ def sanitize_domain(domain: str) -> str:
     # 7. Trim boundary dots/hyphens
     return domain.strip(".-")
 
-def extract_whitelists(db_path: Path, output_dir: Path) -> None:
+def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
     """
-    Reads exact whitelists from gravity.db, categorizes them, sanitizes entries, 
-    and writes each group to its respective output file.
+    Reads exact whitelists (type = 0) from gravity.db with timeout and read-only URI parameters.
     """
     if not db_path.is_file():
-        sys.exit(1)
+        raise FileNotFoundError(f"Database file missing: {db_path}")
 
-    output_dir.mkdir(parents=True, exist_ok=True)
-
-    categories: Dict[str, List[str]] = {}
+    categories: Dict[str, Set[str]] = {}
     
-    try:
-        uri = f"file:{db_path.resolve()}?mode=ro"
-        with sqlite3.connect(uri, uri=True) as conn:
-            cursor = conn.cursor()
+    # 30-second connection timeout handles transient SQLite database locks from Pi-hole/FTL
+    uri = f"file:{db_path.resolve()}?mode=ro"
+    with sqlite3.connect(uri, uri=True, timeout=30.0) as conn:
+        cursor = conn.cursor()
+        query = "SELECT domain, comment FROM domainlist WHERE type = 0"
+        cursor.execute(query)
+        
+        for raw_domain, comment in cursor.fetchall():
+            cleaned_domain = sanitize_domain(raw_domain or "")
+            if not cleaned_domain:
+                continue
             
-            # Type 0 = Exact Whitelist in Pi-hole domainlist
-            query = "SELECT domain, comment FROM domainlist WHERE type = 0"
-            cursor.execute(query)
+            category_name = comment.strip() if comment and comment.strip() else ""
             
-            for row in cursor.fetchall():
-                raw_domain, comment = row[0], row[1]
-                
-                cleaned_domain = sanitize_domain(raw_domain)
-                if not cleaned_domain:
-                    continue
-                
-                category_name = comment.strip() if comment and comment.strip() else ""
-                
-                if category_name not in categories:
-                    categories[category_name] = []
-                categories[category_name].append(cleaned_domain)
-                
-    except sqlite3.Error:
-        sys.exit(1)
+            if category_name not in categories:
+                categories[category_name] = set()
+            categories[category_name].add(cleaned_domain)
+            
+    return categories
 
-    write_output_files(categories, output_dir)
-
-def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> None:
+def write_whitelists_atomically(categories: Dict[str, Set[str]], target_dir: Path) -> None:
     """
-    Ensures the filesystem strictly mirrors the database by purging all existing 
-    files in the target directory, then writing updated, deduplicated, and sorted entries.
+    Writes output into a staging directory first, then atomically replaces target_dir.
+    Guarantees the filesystem state is never left incomplete if an abort occurs.
     """
-    # Step 1: Wipe existing files to reflect deleted categories from the database
-    try:
-        for item in output_dir.iterdir():
-            if item.is_file():
-                item.unlink()
-    except OSError:
-        sys.exit(1)
+    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    
+    # Create temp directory on the same mount point to allow atomic operations
+    with tempfile.TemporaryDirectory(dir=target_dir.parent, prefix=".whitelists_tmp_") as tmp_dir_str:
+        tmp_dir = Path(tmp_dir_str)
+        
+        for comment, domains in categories.items():
+            file_name = "whitelist.txt" if not comment else f"{sanitize_filename(comment)}.txt"
+            file_path = tmp_dir / file_name
 
-    # Step 2: Write current database state
-    for comment, domains in categories.items():
-        file_name = "whitelist.txt" if not comment else f"{sanitize_filename(comment)}.txt"
-        file_path = output_dir / file_name
-
-        try:
-            # Enforce immutable deduplication and alphabetical order
+            # Enforce immutable deduplication and alphabetical sorting
             unique_domains = sorted(frozenset(domains))
 
-            # Write file enforcing standard Unix newline ("\n")
             with file_path.open("w", encoding="utf-8", newline="\n") as f:
                 for domain in unique_domains:
                     f.write(f"{domain}\n")
-                    
+
+        # Atomic directory swap
+        if target_dir.exists():
+            shutil.rmtree(target_dir)
+        shutil.copytree(tmp_dir, target_dir)
+
+def git_sync(repo_dir: Path) -> None:
+    """
+    Stages all changes, verifies structural/file modifications,
+    and commits/pushes using a 24-hour UTC timestamp format.
+    """
+    # Self-heal stale lock files left by interrupted executions
+    index_lock = repo_dir / ".git" / "index.lock"
+    if index_lock.is_file():
+        try:
+            index_lock.unlink()
         except OSError:
-            sys.exit(1)
+            pass
 
-def git_push_changes(repo_dir: Path) -> None:
-    """
-    Stages all changes, verifies if modifications exist, and if detected, commits 
-    using a 24-hour UTC timestamp format (e.g. '22/09/2026 - 13:32') and pushes to the repository.
-    """
-    try:
-        # Stage all changes (new files, modifications, deletions)
-        subprocess.run(["git", "add", "-A"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    # Stage all filesystem modifications
+    subprocess.run(
+        ["git", "add", "-A"], 
+        cwd=repo_dir, 
+        check=True, 
+        stdout=subprocess.DEVNULL, 
+        stderr=subprocess.DEVNULL
+    )
 
-        # Check for changes in the git working tree
-        status = subprocess.run(
-            ["git", "status", "--porcelain"], 
+    # Check status for changes
+    status = subprocess.run(
+        ["git", "status", "--porcelain"], 
+        cwd=repo_dir, 
+        capture_output=True, 
+        text=True, 
+        check=True
+    )
+
+    # Commit and push only if structural or content differences exist
+    if status.stdout.strip():
+        now_utc = datetime.now(timezone.utc)
+        commit_message = now_utc.strftime("%d/%m/%Y - %H:%M")
+        
+        subprocess.run(
+            ["git", "commit", "-m", commit_message], 
             cwd=repo_dir, 
-            capture_output=True, 
-            text=True, 
-            check=True
+            check=True, 
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL
+        )
+        subprocess.run(
+            ["git", "push"], 
+            cwd=repo_dir, 
+            check=True, 
+            stdout=subprocess.DEVNULL, 
+            stderr=subprocess.DEVNULL
         )
 
-        # Only commit and push if file or directory structural changes are present
-        if status.stdout.strip():
-            now_utc = datetime.now(timezone.utc)
-            commit_message = now_utc.strftime("%d/%m/%Y - %H:%M")
-            
-            subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            subprocess.run(["git", "push"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+def main() -> None:
+    try:
+        current_dir = Path(__file__).parent.resolve()
+        whitelists_dir = current_dir / "whitelists"
+        gravity_db = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
 
-    except (subprocess.SubprocessError, OSError):
+        # 1. Read & sanitize DB entries
+        categories = read_db_whitelists(gravity_db)
+
+        # 2. Atomically mirror to whitelists directory
+        write_whitelists_atomically(categories, whitelists_dir)
+
+        # 3. Synchronize with Git repository
+        git_sync(current_dir)
+
+    except Exception:
         sys.exit(1)
 
-if __name__ == "__main__":
-    current_dir = Path(__file__).parent.resolve()
-    whitelists_dir = current_dir / "whitelists"
-    gravity_db = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
-    
-    extract_whitelists(gravity_db, whitelists_dir)
-    git_push_changes(current_dir)
     sys.exit(0)
+
+if __name__ == "__main__":
+    main()
