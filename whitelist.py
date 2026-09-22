@@ -118,20 +118,14 @@ def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> No
 
 def git_push_changes(repo_dir: Path) -> None:
     """
-    Stages all changes, checks for modifications, and commits/pushes to the git 
-    repository using a UTC timestamp format (e.g. '22/09/2026 - 1:32 AM').
+    Stages all changes, verifies if modifications exist, and if detected, commits 
+    using a 24-hour UTC timestamp format (e.g. '22/09/2026 - 13:32') and pushes to the repository.
     """
     try:
-        # Construct exact UTC timestamp: "DD/MM/YYYY - H:MM AM/PM"
-        now_utc = datetime.now(timezone.utc)
-        hour_12 = now_utc.hour % 12 or 12
-        am_pm = "AM" if now_utc.hour < 12 else "PM"
-        commit_message = f"{now_utc.strftime('%d/%m/%Y')} - {hour_12}:{now_utc.strftime('%M')} {am_pm}"
-
-        # Stage all changes
+        # Stage all changes (new files, modifications, deletions)
         subprocess.run(["git", "add", "-A"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-        # Check if there are uncommitted changes staged
+        # Check for changes in the git working tree
         status = subprocess.run(
             ["git", "status", "--porcelain"], 
             cwd=repo_dir, 
@@ -140,8 +134,11 @@ def git_push_changes(repo_dir: Path) -> None:
             check=True
         )
 
-        # Commit and push if modifications exist
+        # Only commit and push if file or directory structural changes are present
         if status.stdout.strip():
+            now_utc = datetime.now(timezone.utc)
+            commit_message = now_utc.strftime("%d/%m/%Y - %H:%M")
+            
             subprocess.run(["git", "commit", "-m", commit_message], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             subprocess.run(["git", "push"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
