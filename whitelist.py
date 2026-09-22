@@ -83,9 +83,26 @@ def write_whitelists_atomically(categories: Dict[str, Set[str]], target_dir: Pat
     """
     Writes output into a staging directory first, then atomically replaces target_dir.
     Guarantees the filesystem state is never left incomplete if an abort occurs.
+    The 'hosts' category is strictly preserved and only appended to.
     """
-    target_dir.parent.mkdir(parents=True, exist_ok=True)
+    target_dir.mkdir(parents=True, exist_ok=True)
     
+    # Immutability policy for "hosts": Merge existing entries from disk into memory
+    # so they survive the atomic directory swap, ensuring it acts as an append-only file.
+    hosts_file_path = target_dir / "hosts.txt"
+    if hosts_file_path.is_file():
+        if "hosts" not in categories:
+            categories["hosts"] = set()
+            
+        try:
+            with hosts_file_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    clean_line = line.strip()
+                    if clean_line:
+                        categories["hosts"].add(clean_line)
+        except OSError:
+            sys.exit(1)
+
     # Create temp directory on the same mount point to allow atomic operations
     with tempfile.TemporaryDirectory(dir=target_dir.parent, prefix=".whitelists_tmp_") as tmp_dir_str:
         tmp_dir = Path(tmp_dir_str)
@@ -166,7 +183,7 @@ def main() -> None:
         # 1. Read & sanitize DB entries
         categories = read_db_whitelists(gravity_db)
 
-        # 2. Atomically mirror to whitelists directory
+        # 2. Atomically mirror to whitelists directory (with hosts file preservation)
         write_whitelists_atomically(categories, whitelists_dir)
 
         # 3. Synchronize with Git repository
