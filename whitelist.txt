@@ -3,25 +3,6 @@ ocsp.usertrust.com
 voe.sx
 jsdelivr.net
 
-# GeForce Experience
-events.gfe.nvidia.com
-gfwsl.geforce.com
-
-# Nvidia updates
-ota-downloads.nvidia.com
-
 # Adblock Testers
 mobileproxy.space
 getblockify.com
-
-# Host files
-hosts-file.net
-raw.githubusercontent.com
-v.firebog.net
-hostsfile.org
-someonewhocares.org
-hostsfile.mine.nu
-winhelp2002.mvps.org
-sysctl.org
-pgl.yoyo.org
-zeustracker.abuse.ch
