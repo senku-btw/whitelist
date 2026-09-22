@@ -23,7 +23,7 @@ def sanitize_filename(filename: str) -> str:
     """
     if not isinstance(filename, str):
         return "unnamed_category"
-    
+
     sanitized = re.sub(r'[\\/*?:"<>|]', "", filename)
     sanitized = sanitized.strip().replace(" ", "_")
     return sanitized if sanitized else "unnamed_category"
@@ -98,60 +98,69 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
     return categories
 
 
+def _merge_existing_hosts(target_dir: Path, categories: Dict[str, Set[str]]) -> None:
+    """
+    Merges existing 'hosts.txt' file entries from target_dir into categories['hosts'].
+    """
+    hosts_file_path = target_dir / "hosts.txt"
+    if not hosts_file_path.is_file():
+        return
+
+    if "hosts" not in categories:
+        categories["hosts"] = set()
+
+    try:
+        with hosts_file_path.open("r", encoding="utf-8") as f:
+            for line in f:
+                clean_line = line.strip()
+                if clean_line:
+                    categories["hosts"].add(clean_line)
+    except OSError:
+        pass
+
+
+def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> None:
+    """
+    Writes categorized domains to individual text files in the temporary directory.
+    """
+    for comment, domains in categories.items():
+        file_name = f"{sanitize_filename(comment)}.txt" if comment else "whitelist.txt"
+        file_path = tmp_dir / file_name
+
+        unique_domains = sorted(frozenset(domains))
+
+        with file_path.open("w", encoding="utf-8", newline="\n") as f:
+            for domain in unique_domains:
+                f.write(f"{domain}\n")
+
+
 def write_whitelists_atomically(categories: Dict[str, Set[str]], target_dir: Path) -> None:
     """
     Performs a true atomic directory swap to guarantee filesystem integrity.
     Merges existing 'hosts' file to ensure append-only immutability.
     """
     target_dir.parent.mkdir(parents=True, exist_ok=True)
+    _merge_existing_hosts(target_dir, categories)
 
-    # Immutability policy for "hosts": Merge existing entries into memory
-    hosts_file_path = target_dir / "hosts.txt"
-    if hosts_file_path.is_file():
-        if "hosts" not in categories:
-            categories["hosts"] = set()
-
-        try:
-            with hosts_file_path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    clean_line = line.strip()
-                    if clean_line:
-                        categories["hosts"].add(clean_line)
-        except OSError:
-            pass  # Proceed with DB entries if read fails, preventing pipeline stall
-
-    # Setup staging and backup directory paths for atomic operation
     hex_id = secrets.token_hex(4)
     tmp_dir = target_dir.with_name(f".{target_dir.name}_tmp_{hex_id}")
     backup_dir = target_dir.with_name(f".{target_dir.name}_backup_{hex_id}")
 
     try:
         tmp_dir.mkdir(parents=True, exist_ok=True)
+        _write_category_files(categories, tmp_dir)
 
-        for comment, domains in categories.items():
-            file_name = f"{sanitize_filename(comment)}.txt" if comment else "whitelist.txt"
-            file_path = tmp_dir / file_name
-
-            unique_domains = sorted(frozenset(domains))
-
-            with file_path.open("w", encoding="utf-8", newline="\n") as f:
-                for domain in unique_domains:
-                    f.write(f"{domain}\n")
-
-        # Atomic Swap Sequence
         if target_dir.exists():
             target_dir.rename(backup_dir)
-        
+
         tmp_dir.rename(target_dir)
 
     except OSError:
-        # Rollback on failure
         if backup_dir.exists() and not target_dir.exists():
             backup_dir.rename(target_dir)
         sys.exit(1)
 
     finally:
-        # Guaranteed cleanup of temporary and backup assets
         for cleanup_dir in (tmp_dir, backup_dir):
             if cleanup_dir.exists():
                 shutil.rmtree(cleanup_dir, ignore_errors=True)
@@ -164,3 +173,78 @@ def git_sync(repo_dir: Path) -> None:
     """
     if not (repo_dir / ".git").is_dir():
         sys.exit(1)
+
+    # Self-heal stale lock files left by interrupted executions
+    index_lock = repo_dir / ".git" / "index.lock"
+    if index_lock.is_file():
+        try:
+            index_lock.unlink()
+        except OSError:
+            pass
+
+    try:
+        subprocess.run(
+            ["git", "add", "-A"],
+            cwd=repo_dir,
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            timeout=30.0,
+        )
+
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_dir,
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=30.0,
+        )
+
+        if status.stdout.strip():
+            commit_message = secrets.token_hex(4)[:7]
+
+            subprocess.run(
+                ["git", "commit", "-m", commit_message],
+                cwd=repo_dir,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=30.0,
+            )
+            subprocess.run(
+                ["git", "push"],
+                cwd=repo_dir,
+                check=True,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                timeout=30.0,
+            )
+
+    except (subprocess.SubprocessError, OSError):
+        sys.exit(1)
+
+
+def main() -> None:
+    """
+    Main execution entry point.
+    """
+    try:
+        current_dir = Path(__file__).parent.resolve()
+        whitelists_dir = current_dir / "whitelists"
+        gravity_db = Path(
+            "/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db"
+        )
+
+        categories = read_db_whitelists(gravity_db)
+        write_whitelists_atomically(categories, whitelists_dir)
+        git_sync(current_dir)
+
+    except Exception:  # pylint: disable=broad-exception-caught
+        sys.exit(1)
+
+    sys.exit(0)
+
+
+if __name__ == "__main__":
+    main()
