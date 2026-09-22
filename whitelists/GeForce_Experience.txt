@@ -1,2 +1,0 @@
-events.gfe.nvidia.com
-gfwsl.geforce.com

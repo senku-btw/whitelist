@@ -86,9 +86,18 @@ def extract_whitelists(db_path: Path, output_dir: Path) -> None:
 
 def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> None:
     """
-    Deduplicates entries via frozenset, sorts them alphabetically, 
-    and writes each domain to its own distinct line, completely overwriting prior files.
+    Ensures the filesystem strictly mirrors the database by first purging all existing 
+    files in the target directory, then writing the updated, deduplicated, and sorted entries.
     """
+    # Step 1: Wipe existing files to reflect deleted categories from the database
+    try:
+        for item in output_dir.iterdir():
+            if item.is_file():
+                item.unlink()
+    except OSError:
+        sys.exit(1)
+
+    # Step 2: Write current database state
     for comment, domains in categories.items():
         file_name = "whitelist.txt" if not comment else f"{sanitize_filename(comment)}.txt"
         file_path = output_dir / file_name
@@ -97,7 +106,7 @@ def write_output_files(categories: Dict[str, List[str]], output_dir: Path) -> No
             # Enforce immutable deduplication and alphabetical order
             unique_domains = sorted(frozenset(domains))
 
-            # Always overwrite ("w") and enforce standard Unix newline ("\n")
+            # Write file enforcing standard Unix newline ("\n")
             with file_path.open("w", encoding="utf-8", newline="\n") as f:
                 for domain in unique_domains:
                     f.write(f"{domain}\n")
