@@ -6,13 +6,13 @@ by comment into individual files, and commits structural changes to Git.
 """
 
 import re
+import secrets
 import shutil
 import sqlite3
 import subprocess
 import sys
 import tempfile
 import unicodedata
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Dict, Set
 
@@ -139,7 +139,7 @@ def write_whitelists_atomically(categories: Dict[str, Set[str]], target_dir: Pat
 def git_sync(repo_dir: Path) -> None:
     """
     Stages all changes, verifies structural/file modifications,
-    and commits/pushes using a 24-hour UTC timestamp format.
+    and commits/pushes using a 7-character random hex ID.
     """
     # Self-heal stale lock files left by interrupted executions
     index_lock = repo_dir / ".git" / "index.lock"
@@ -169,8 +169,8 @@ def git_sync(repo_dir: Path) -> None:
 
     # Commit and push only if structural or content differences exist
     if status.stdout.strip():
-        now_utc = datetime.now(timezone.utc)
-        commit_message = now_utc.strftime("%d/%m/%Y - %H:%M")
+        # Generate a random 7-character hex string to simulate a commit hash ID
+        commit_message = secrets.token_hex(4)[:7]
 
         subprocess.run(
             ["git", "commit", "-m", commit_message],
