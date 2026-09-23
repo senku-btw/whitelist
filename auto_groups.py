@@ -148,8 +148,8 @@ def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
 
 def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
-    Purges all non-Default groups and their domain links, recreates missing groups
-    from whitelist comments, and returns a dictionary mapping group names to IDs.
+    Purges all non-Default groups and all group mappings across all tables,
+    recreates missing groups, and returns a dictionary mapping group names to IDs.
     """
     current_timestamp = int(time.time())
 
@@ -168,18 +168,28 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         default_group_id = cursor.lastrowid
         print(f"Created missing '{DEFAULT_GROUP}' group.")
 
-    # 2. Delete all domain-group associations and groups other than 'Default'
+    # 2. Clear non-default associations across all relational tables
     cursor.execute(
         "DELETE FROM domainlist_by_group WHERE group_id != ?",
         (default_group_id,),
     )
     cursor.execute(
+        "DELETE FROM client_by_group WHERE group_id != ?",
+        (default_group_id,),
+    )
+    cursor.execute(
+        "DELETE FROM adlist_by_group WHERE group_id != ?",
+        (default_group_id,),
+    )
+
+    # 3. Delete all groups except 'Default'
+    cursor.execute(
         'DELETE FROM "group" WHERE id != ?',
         (default_group_id,),
     )
-    print("Purged all previous non-Default groups and mappings.")
+    print("Purged all previous non-Default groups and associated mappings.")
 
-    # 3. Extract group names from current database comments
+    # 4. Extract group names from current database whitelist comments
     cursor.execute(
         "SELECT comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
@@ -194,7 +204,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         if cleaned_comment and cleaned_comment not in SKIPPED_GROUPS and cleaned_comment != DEFAULT_GROUP:
             whitelisted_comments.add(cleaned_comment)
 
-    # 4. Insert newly discovered groups
+    # 5. Re-insert discovered groups
     group_dict = {DEFAULT_GROUP: default_group_id}
 
     if whitelisted_comments:
@@ -246,6 +256,24 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
             f"Successfully linked {len(mapping_inserts)} whitelist domain(s) "
             "to their corresponding groups."
         )
+
+
+def reload_pihole_engine():
+    """Commands Pi-hole FTL to reload gravity database changes into memory."""
+    try:
+        # Check if pihole command is accessible directly or via docker
+        cmd = ["pihole", "restartdns", "reload-lists"]
+        if os.path.exists("/.dockerenv"):
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        else:
+            # Running on host targeting docker container if applicable
+            docker_cmd = ["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"]
+            res = subprocess.run(cmd, capture_output=True, text=True)
+            if res.returncode != 0:
+                subprocess.run(docker_cmd, check=True, capture_output=True, text=True)
+        print("Successfully reloaded Pi-hole FTL memory cache.")
+    except Exception as e:
+        print(f"Warning: Could not automatically reload Pi-hole FTL cache: {e}")
 
 
 def push_to_github():
@@ -343,6 +371,9 @@ def run_sync():
             "Success: Database sync, entry migration, "
             "and file generation completed seamlessly."
         )
+
+        # Force FTL to reload database changes
+        reload_pihole_engine()
 
         push_to_github()
 
