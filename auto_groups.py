@@ -243,13 +243,15 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
 
 
 def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
-    """Maps domains to their corresponding groups based on whitelist comments."""
+    """Maps domains exclusively to their corresponding groups based on whitelist comments."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
     )
 
+    domains_to_clear = []
     mapping_inserts = []
+    
     for domain_id, comment in cursor.fetchall():
         if comment.strip().startswith("#"):
             continue
@@ -257,17 +259,26 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
         cleaned_comment = clean_to_title_case(comment)
         if cleaned_comment and cleaned_comment in group_dict:
             group_id = group_dict[cleaned_comment]
+            domains_to_clear.append((domain_id,))
             mapping_inserts.append((domain_id, group_id))
 
-    if mapping_inserts:
+    if domains_to_clear:
+        # 1. Clear any existing associations (like Default) for these specific domains
         cursor.executemany(
-            "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) "
+            "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
+            domains_to_clear,
+        )
+
+    if mapping_inserts:
+        # 2. Add the exclusive group mapping
+        cursor.executemany(
+            "INSERT INTO domainlist_by_group (domainlist_id, group_id) "
             "VALUES (?, ?)",
             mapping_inserts,
         )
         print(
             f"Successfully linked {len(mapping_inserts)} whitelist domain(s) "
-            "to their corresponding groups."
+            "exclusively to their corresponding groups."
         )
 
 
