@@ -1,8 +1,8 @@
 """
 Module for synchronizing Pi-hole groups and whitelist files.
 Automatically creates groups based on whitelist comments, maps domains,
-exports '#' prefixed categories to a separate text file, and pushes to GitHub 
-with a random 7-character hex commit message containing mixed letters and numbers.
+preserves client associations, exports '#' prefixed categories to a text file, 
+and pushes to GitHub autonomously.
 """
 
 import fcntl
@@ -146,6 +146,22 @@ def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
     print(f"Removed {len(ids_to_delete)} migrated '#' domain(s) from gravity.db.")
 
 
+def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
+    """Records current client-to-group configurations before the database is purged."""
+    cursor.execute(
+        """
+        SELECT cbg.client_id, g.name
+        FROM client_by_group cbg
+        JOIN "group" g ON cbg.group_id = g.id
+        """
+    )
+    client_backup = defaultdict(list)
+    for client_id, group_name in cursor.fetchall():
+        client_backup[client_id].append(group_name)
+    
+    return dict(client_backup)
+
+
 def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
     Purges all non-Default groups and all group mappings across all tables,
@@ -153,7 +169,6 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
     current_timestamp = int(time.time())
 
-    # 1. Ensure 'Default' group exists and acquire its ID
     cursor.execute('SELECT id FROM "group" WHERE name = ?', (DEFAULT_GROUP,))
     default_row = cursor.fetchone()
 
@@ -168,28 +183,15 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         default_group_id = cursor.lastrowid
         print(f"Created missing '{DEFAULT_GROUP}' group.")
 
-    # 2. Clear non-default associations across all relational tables
-    cursor.execute(
-        "DELETE FROM domainlist_by_group WHERE group_id != ?",
-        (default_group_id,),
-    )
-    cursor.execute(
-        "DELETE FROM client_by_group WHERE group_id != ?",
-        (default_group_id,),
-    )
-    cursor.execute(
-        "DELETE FROM adlist_by_group WHERE group_id != ?",
-        (default_group_id,),
-    )
+    # Clear non-default associations across all relational tables
+    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,))
+    cursor.execute("DELETE FROM client_by_group WHERE group_id != ?", (default_group_id,))
+    cursor.execute("DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,))
 
-    # 3. Delete all groups except 'Default'
-    cursor.execute(
-        'DELETE FROM "group" WHERE id != ?',
-        (default_group_id,),
-    )
+    # Delete all groups except 'Default'
+    cursor.execute('DELETE FROM "group" WHERE id != ?', (default_group_id,))
     print("Purged all previous non-Default groups and associated mappings.")
 
-    # 4. Extract group names from current database whitelist comments
     cursor.execute(
         "SELECT comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
@@ -204,7 +206,6 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         if cleaned_comment and cleaned_comment not in SKIPPED_GROUPS and cleaned_comment != DEFAULT_GROUP:
             whitelisted_comments.add(cleaned_comment)
 
-    # 5. Re-insert discovered groups
     group_dict = {DEFAULT_GROUP: default_group_id}
 
     if whitelisted_comments:
@@ -258,11 +259,37 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
         )
 
 
+def restore_client_mappings(cursor: sqlite3.Cursor, client_backup: Dict[int, List[str]], group_dict: Dict[str, int]):
+    """Re-links clients to the Default group and any newly recreated groups they belonged to."""
+    default_group_id = group_dict[DEFAULT_GROUP]
+    mapping_inserts = set()
+
+    # 1. Guarantee every registered client is mapped to the Default group
+    cursor.execute("SELECT id FROM client")
+    for (client_id,) in cursor.fetchall():
+        mapping_inserts.add((client_id, default_group_id))
+
+    # 2. Restore previous mappings if the matched group was regenerated
+    for client_id, group_names in client_backup.items():
+        for group_name in group_names:
+            cleaned_name = clean_to_title_case(group_name)
+            if cleaned_name in group_dict and cleaned_name != DEFAULT_GROUP:
+                mapping_inserts.add((client_id, group_dict[cleaned_name]))
+
+    if mapping_inserts:
+        cursor.executemany(
+            "INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)",
+            list(mapping_inserts)
+        )
+        # Find unique clients affected
+        unique_clients = len(set(c[0] for c in mapping_inserts))
+        print(f"Restored saved configurations and enforced Default fallback for {unique_clients} client(s).")
+
+
 def reload_pihole_engine():
     """Forces a full restart of the Pi-hole FTL container/service to guarantee a clean cache reload."""
     try:
         if os.path.exists("/.dockerenv"):
-            # Running inside the container: terminate FTL so the init supervisor (s6) immediately respawns it
             subprocess.run(
                 ["pkill", "-9", "-f", "pihole-FTL"], 
                 check=True, 
@@ -270,7 +297,6 @@ def reload_pihole_engine():
                 text=True
             )
         else:
-            # Running on the host: execute a full container restart via Docker daemon
             subprocess.run(
                 ["docker", "restart", "pihole"], 
                 check=True, 
@@ -283,7 +309,8 @@ def reload_pihole_engine():
         print(f"Warning: Failed to restart Pi-hole container. Details: {err_msg}")
     except Exception as e:
         print(f"Warning: Could not automatically restart Pi-hole FTL: {e}")
-        
+
+
 def push_to_github():
     """Commits and pushes whitelist.txt to GitHub autonomously using a mixed hex message."""
     repo_dir = WHITELIST_TXT_PATH.parent
@@ -371,8 +398,15 @@ def run_sync():
         ids_to_delete = process_and_clean_whitelist(cursor)
         remove_migrated_domains(cursor, ids_to_delete)
 
+        # 1. Capture Client State
+        client_backup = backup_client_mappings(cursor)
+
+        # 2. Rebuild Groups and Domain Mappings
         existing_groups = sync_groups(cursor)
         map_domains_to_groups(cursor, existing_groups)
+
+        # 3. Restore Client State
+        restore_client_mappings(cursor, client_backup, existing_groups)
 
         conn.commit()
         print(
@@ -383,6 +417,7 @@ def run_sync():
         # Force FTL to reload database changes
         reload_pihole_engine()
 
+        # Push file to remote
         push_to_github()
 
     except Exception as e:
