@@ -1,0 +1,3 @@
+_https._tcp.pkgs.tailscale.com
+controlplane.tailscale.com
+pkgs.tailscale.com
