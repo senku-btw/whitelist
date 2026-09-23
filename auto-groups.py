@@ -52,18 +52,20 @@ def is_valid_domain(domain: str) -> bool:
         return False
         
     # Regex for standard valid FQDNs
-    # Ensures alphanumeric/hyphen labels separated by dots, ending in a valid TLD
     pattern = re.compile(
         r'^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$'
     )
     return bool(pattern.match(domain))
 
-def process_whitelist_file():
-    """Parses existing whitelist.txt, extracts DB entries, and regenerates the file alphabetically."""
-    # 1. Parse existing whitelist.txt
+def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> list[int]:
+    """
+    Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt in 
+    alphabetical order, and returns the database IDs of migrated domains for deletion.
+    """
     merged_data = defaultdict(set)
     current_comment = None
     
+    # 1. Parse existing whitelist.txt file
     if WHITELIST_TXT_PATH.exists():
         with open(WHITELIST_TXT_PATH, "r") as f:
             for line in f:
@@ -71,46 +73,38 @@ def process_whitelist_file():
                 if not line:
                     continue
                 if line.startswith("#"):
-                    # Normalize spacing around the hash mark
                     current_comment = f"# {line.lstrip('#').strip()}"
                 elif current_comment and is_valid_domain(line):
                     merged_data[current_comment].add(line)
 
-    # 2. Extract '#' entries from the database
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-    try:
-        # Fetch exact whitelist domains (type = 0) where comment starts with '#'
-        cursor.execute("SELECT domain, comment FROM domainlist WHERE type = 0 AND comment LIKE '#%'")
-        db_entries = cursor.fetchall()
+    # 2. Extract '#' entries from the database along with their primary key IDs
+    cursor.execute("SELECT id, domain, comment FROM domainlist WHERE type = 0 AND comment LIKE '#%'")
+    db_entries = cursor.fetchall()
+    
+    db_ids_to_delete = []
+    for domain_id, domain, comment in db_entries:
+        clean_domain = domain.strip()
+        clean_comment = f"# {comment.lstrip('#').strip()}"
         
-        for domain, comment in db_entries:
-            clean_domain = domain.strip()
-            clean_comment = f"# {comment.lstrip('#').strip()}"
-            
-            if is_valid_domain(clean_domain):
-                merged_data[clean_comment].add(clean_domain)
-                
-    finally:
-        conn.close()
+        if is_valid_domain(clean_domain):
+            merged_data[clean_comment].add(clean_domain)
+            db_ids_to_delete.append(domain_id)
 
-    # 3. Secure data in immutable structures (MappingProxyType containing frozensets)
+    # 3. Secure data in immutable structures
     immutable_whitelist = MappingProxyType({
         comment: frozenset(domains) 
         for comment, domains in merged_data.items()
     })
 
-    # 4. Write back to whitelist.txt from scratch in alphabetical order
+    # 4. Re-create whitelist.txt from scratch in strict alphabetical order
     with open(WHITELIST_TXT_PATH, "w") as f:
-        # Sort comments alphabetically
         for comment in sorted(immutable_whitelist.keys()):
             f.write(f"{comment}\n")
-            
-            # Sort domains under the comment alphabetically
             for domain in sorted(immutable_whitelist[comment]):
                 f.write(f"{domain}\n")
-                
-            f.write("\n")  # Add a blank line between blocks
+            f.write("\n")
+
+    return db_ids_to_delete
 
 def main():
     lock_file = open(LOCK_FILE_PATH, "w")
@@ -124,17 +118,34 @@ def main():
         print(f"Database not found at {DB_PATH}")
         return
 
-    # Phase 1: File Export & Merge
-    print(f"Processing and regenerating {WHITELIST_TXT_PATH.name}...")
-    process_whitelist_file()
-
-    # Phase 2: Database Sync
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
     try:
         conn.execute("BEGIN TRANSACTION")
 
+        # -------------------------------------------------------------
+        # PART 1: File Merge, Export & Database Clean-up
+        # -------------------------------------------------------------
+        print(f"Processing and regenerating {WHITELIST_TXT_PATH.name}...")
+        ids_to_delete = process_and_clean_whitelist(cursor)
+
+        if ids_to_delete:
+            # Delete associated domain group linkages first (foreign integrity)
+            cursor.executemany(
+                "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
+                [(domain_id,) for domain_id in ids_to_delete]
+            )
+            # Delete the entries from the domainlist table
+            cursor.executemany(
+                "DELETE FROM domainlist WHERE id = ?",
+                [(domain_id,) for domain_id in ids_to_delete]
+            )
+            print(f"Removed {len(ids_to_delete)} migrated '#' domain(s) from gravity.db.")
+
+        # -------------------------------------------------------------
+        # PART 2: Remaining Group Synchronization & Auto-Creation
+        # -------------------------------------------------------------
         cursor.execute('SELECT id, name FROM "group"')
         existing_groups_raw = cursor.fetchall()
 
@@ -158,8 +169,6 @@ def main():
 
         whitelisted_comments = set()
         for row in comments_raw:
-            # We ignore '#' prefixed comments for database GROUP creation 
-            # to avoid cluttering Pi-hole groups with "# Category" names
             if row[0].strip().startswith('#'):
                 continue
                 
@@ -188,6 +197,9 @@ def main():
                     
             print(f"Successfully inserted {len(new_groups)} new group(s).")
 
+        # -------------------------------------------------------------
+        # PART 3: Domain-to-Group Comment Mapping
+        # -------------------------------------------------------------
         cursor.execute('SELECT id, comment FROM domainlist WHERE type = 0 AND comment IS NOT NULL AND comment != ""')
         domains_raw = cursor.fetchall()
 
@@ -209,7 +221,7 @@ def main():
             print(f"Successfully linked {len(mapping_inserts)} whitelist domain(s) to their corresponding groups.")
 
         conn.commit()
-        print("Success: Database sync and file generation completed seamlessly.")
+        print("Success: Database sync, entry migration, and file generation completed seamlessly.")
 
     except Exception as e:
         conn.rollback()
