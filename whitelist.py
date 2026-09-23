@@ -116,7 +116,7 @@ def _merge_existing_immutables(target_dir: Path, categories: Dict[str, Set[str]]
     for category in immutable_categories:
         file_name = f"{sanitize_filename(category)}.txt"
         file_path = target_dir / file_name
-        
+
         if not file_path.is_file():
             continue
 
