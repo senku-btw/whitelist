@@ -1,7 +1,7 @@
 """
 Module for synchronizing Pi-hole groups and whitelist files.
 Automatically creates groups based on whitelist comments, maps domains,
-preserves client associations, exports '#' prefixed categories to a text file, 
+preserves client associations, exports '#' prefixed categories to a text file,
 and pushes to GitHub autonomously.
 """
 
@@ -158,7 +158,7 @@ def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
     client_backup = defaultdict(list)
     for client_id, group_name in cursor.fetchall():
         client_backup[client_id].append(group_name)
-    
+
     return dict(client_backup)
 
 
@@ -184,9 +184,15 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         print(f"Created missing '{DEFAULT_GROUP}' group.")
 
     # Clear non-default associations across all relational tables
-    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,))
-    cursor.execute("DELETE FROM client_by_group WHERE group_id != ?", (default_group_id,))
-    cursor.execute("DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,))
+    cursor.execute(
+        "DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,)
+    )
+    cursor.execute(
+        "DELETE FROM client_by_group WHERE group_id != ?", (default_group_id,)
+    )
+    cursor.execute(
+        "DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,)
+    )
 
     # Delete all groups except 'Default'
     cursor.execute('DELETE FROM "group" WHERE id != ?', (default_group_id,))
@@ -203,7 +209,11 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             continue
 
         cleaned_comment = clean_to_title_case(row[0])
-        if cleaned_comment and cleaned_comment not in SKIPPED_GROUPS and cleaned_comment != DEFAULT_GROUP:
+        if (
+            cleaned_comment
+            and cleaned_comment not in SKIPPED_GROUPS
+            and cleaned_comment != DEFAULT_GROUP
+        ):
             whitelisted_comments.add(cleaned_comment)
 
     group_dict = {DEFAULT_GROUP: default_group_id}
@@ -219,7 +229,9 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             new_group_data,
         )
 
-        cursor.execute('SELECT id, name FROM "group" WHERE id != ?', (default_group_id,))
+        cursor.execute(
+            'SELECT id, name FROM "group" WHERE id != ?', (default_group_id,)
+        )
         for group_id, name in cursor.fetchall():
             cleaned_name = clean_to_title_case(name)
             if cleaned_name:
@@ -259,7 +271,11 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
         )
 
 
-def restore_client_mappings(cursor: sqlite3.Cursor, client_backup: Dict[int, List[str]], group_dict: Dict[str, int]):
+def restore_client_mappings(
+    cursor: sqlite3.Cursor,
+    client_backup: Dict[int, List[str]],
+    group_dict: Dict[str, int],
+):
     """Re-links clients to the Default group and any newly recreated groups they belonged to."""
     default_group_id = group_dict[DEFAULT_GROUP]
     mapping_inserts = set()
@@ -279,11 +295,13 @@ def restore_client_mappings(cursor: sqlite3.Cursor, client_backup: Dict[int, Lis
     if mapping_inserts:
         cursor.executemany(
             "INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)",
-            list(mapping_inserts)
+            list(mapping_inserts),
         )
         # Find unique clients affected
         unique_clients = len(set(c[0] for c in mapping_inserts))
-        print(f"Restored saved configurations and enforced Default fallback for {unique_clients} client(s).")
+        print(
+            f"Restored saved configurations and enforced Default fallback for {unique_clients} client(s)."
+        )
 
 
 def reload_pihole_engine():
@@ -291,17 +309,17 @@ def reload_pihole_engine():
     try:
         if os.path.exists("/.dockerenv"):
             subprocess.run(
-                ["pkill", "-9", "-f", "pihole-FTL"], 
-                check=True, 
-                capture_output=True, 
-                text=True
+                ["pkill", "-9", "-f", "pihole-FTL"],
+                check=True,
+                capture_output=True,
+                text=True,
             )
         else:
             subprocess.run(
-                ["docker", "restart", "pihole"], 
-                check=True, 
-                capture_output=True, 
-                text=True
+                ["docker", "restart", "pihole"],
+                check=True,
+                capture_output=True,
+                text=True,
             )
         print("Successfully restarted Pi-hole engine and refreshed memory cache.")
     except subprocess.CalledProcessError as e:
@@ -373,13 +391,19 @@ def push_to_github():
             timeout=GIT_TIMEOUT_SECONDS,
             env=env,
         )
-        print(f"Successfully pushed updated whitelist.txt to GitHub with commit message [{commit_hex}].")
+        print(
+            f"Successfully pushed updated whitelist.txt to GitHub with commit message [{commit_hex}]."
+        )
 
     except subprocess.TimeoutExpired as e:
-        print(f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}")
+        print(
+            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}"
+        )
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
-        print(f"ERROR: Git operation failed during command: {' '.join(e.cmd)}\nDetails: {err_msg}")
+        print(
+            f"ERROR: Git operation failed during command: {' '.join(e.cmd)}\nDetails: {err_msg}"
+        )
 
 
 def run_sync():
