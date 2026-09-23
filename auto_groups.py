@@ -12,6 +12,7 @@ import fcntl
 from pathlib import Path
 from types import MappingProxyType
 from collections import defaultdict
+from typing import List, Dict
 
 # Define paths
 DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
@@ -66,7 +67,7 @@ def is_valid_domain(domain: str) -> bool:
     return bool(pattern.match(domain))
 
 
-def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> list[int]:
+def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     """
     Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt in
     alphabetical order, and returns the database IDs of migrated domains for deletion.
@@ -118,7 +119,7 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> list[int]:
     return db_ids_to_delete
 
 
-def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: list[int]):
+def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
     """Deletes migrated '#' domains and their group links from gravity.db."""
     if not ids_to_delete:
         return
@@ -134,7 +135,7 @@ def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: list[int]):
     print(f"Removed {len(ids_to_delete)} migrated '#' domain(s) from gravity.db.")
 
 
-def sync_groups(cursor: sqlite3.Cursor) -> dict[str, int]:
+def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """Ensures Default group exists, creates new groups, and returns group mapping."""
     cursor.execute('SELECT id, name FROM "group"')
     existing_group_dict = {}
@@ -191,7 +192,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> dict[str, int]:
     return existing_group_dict
 
 
-def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: dict[str, int]):
+def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
     """Maps domains to their corresponding groups based on whitelist comments."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
