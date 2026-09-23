@@ -1,4 +1,5 @@
 0.client-channel.google.com
+2.android.pool.ntp.org
 android.clients.google.com
 appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com

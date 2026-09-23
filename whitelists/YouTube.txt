@@ -7,6 +7,7 @@ redirector.googlevideo.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
+s3.youtube.com
 www.youtube-nocookie.com
 youtu.be
 youtube-nocookie.com
