@@ -21,6 +21,7 @@ imgix.net
 placehold.it
 placeholdit.imgix.net
 res.cloudinary.com
+ocsp.usertrust.com
 
 # Front‑End Delivery Networks
 gstatic.com
