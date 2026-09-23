@@ -82,12 +82,8 @@ def is_valid_domain(domain: str) -> bool:
     return bool(pattern.match(domain))
 
 
-def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
-    """
-    Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt in
-    alphabetical order without duplicate domains, and returns the database IDs
-    of migrated domains for deletion.
-    """
+def parse_whitelist_file() -> defaultdict:
+    """Parses whitelist.txt into a mapping of category comments to sets of domains."""
     merged_data = defaultdict(set)
     current_comment = None
 
@@ -102,14 +98,24 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
                 elif current_comment and is_valid_domain(line):
                     merged_data[current_comment].add(line)
 
+    return merged_data
+
+
+def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
+    """
+    Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt in
+    alphabetical order without duplicate domains, and returns the database IDs
+    of migrated domains for deletion.
+    """
+    merged_data = parse_whitelist_file()
+
     cursor.execute(
         "SELECT id, domain, comment FROM domainlist "
         "WHERE type = 0 AND comment LIKE '#%'"
     )
-    db_entries = cursor.fetchall()
 
     db_ids_to_delete = []
-    for domain_id, domain, comment in db_entries:
+    for domain_id, domain, comment in cursor.fetchall():
         clean_domain = domain.strip()
         clean_comment = f"# {comment.lstrip('#').strip()}"
 
