@@ -1,12 +1,14 @@
 """
 Module for synchronizing Pi-hole groups and whitelist files.
 Automatically creates groups based on whitelist comments, maps domains,
-and exports '#' prefixed categories to a separate text file.
+exports '#' prefixed categories to a separate text file, and pushes to GitHub.
 """
 
 import fcntl
+import os
 import re
 import sqlite3
+import subprocess
 import sys
 import time
 from collections import defaultdict
@@ -33,6 +35,11 @@ CORRECTIONS = MappingProxyType(
         "Amazonkindle": "Amazon Kindle",
     }
 )
+
+# Git configuration defaults for automated execution
+GIT_BOT_NAME = "Pi-hole Auto Sync Bot"
+GIT_BOT_EMAIL = "pihole-bot@users.noreply.github.com"
+GIT_TIMEOUT_SECONDS = 30
 
 
 def clean_to_title_case(text: str) -> str:
@@ -221,6 +228,83 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
         )
 
 
+def push_to_github():
+    """Commits and pushes whitelist.txt to GitHub autonomously."""
+    repo_dir = WHITELIST_TXT_PATH.parent
+
+    # Configure non-interactive git environment variables
+    env = os.environ.copy()
+    env["GIT_TERMINAL_PROMPT"] = "0"  # Fail immediately instead of waiting for a password prompt
+    env["GIT_AUTHOR_NAME"] = GIT_BOT_NAME
+    env["GIT_AUTHOR_EMAIL"] = GIT_BOT_EMAIL
+    env["GIT_COMMITTER_NAME"] = GIT_BOT_NAME
+    env["GIT_COMMITTER_EMAIL"] = GIT_BOT_EMAIL
+
+    try:
+        # 1. Add file to staging
+        subprocess.run(
+            ["git", "add", "whitelist.txt"],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+        )
+
+        # 2. Check for pending changes
+        status = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+        )
+
+        if not status.stdout.strip():
+            print("No changes to whitelist.txt. Skipping GitHub push.")
+            return
+
+        # 3. Commit changes
+        commit_msg = f"Auto-sync whitelist.txt - {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        subprocess.run(
+            ["git", "commit", "-m", commit_msg],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+        )
+
+        # 4. Pull remote changes with rebase to prevent non-fast-forward push rejections
+        subprocess.run(
+            ["git", "pull", "--rebase", "origin", "main"],
+            cwd=repo_dir,
+            check=False,  # Continue even if remote branch doesn't exist or doesn't pull
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+        )
+
+        # 5. Push changes
+        subprocess.run(
+            ["git", "push"],
+            cwd=repo_dir,
+            check=True,
+            capture_output=True,
+            timeout=GIT_TIMEOUT_SECONDS,
+            env=env,
+        )
+        print("Successfully pushed updated whitelist.txt to GitHub.")
+
+    except subprocess.TimeoutExpired as e:
+        print(f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}")
+    except subprocess.CalledProcessError as e:
+        err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
+        print(f"ERROR: Git operation failed during command: {' '.join(e.cmd)}\nDetails: {err_msg}")
+
+
 def run_sync():
     """Executes the complete database synchronization and file processing pipeline."""
     if not DB_PATH.exists():
@@ -245,6 +329,9 @@ def run_sync():
             "Success: Database sync, entry migration, "
             "and file generation completed seamlessly."
         )
+
+        # Autonomous push to GitHub
+        push_to_github()
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         conn.rollback()
