@@ -8,6 +8,6 @@ ocsp.usertrust.com
 # Media Streaming
 voe.sx
 
-# Open-Source Infrastructure
+# Commercial Business Applications
 sourceforge.net
 
