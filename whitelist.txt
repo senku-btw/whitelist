@@ -41,8 +41,6 @@ players.brightcove.net
 secure.brightcove.com
 videos.vidible.tv
 vidtech.cbsinteractive.com
-
-# Media Streaming
 voe.sx
 
 # TV & Movies
