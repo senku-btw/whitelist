@@ -6,20 +6,46 @@ mobileproxy.space
 jsdelivr.net
 sourceforge.net
 
+# Content Delivery Networks (CDNs)
+cdn.cloudflare.net
+cdnjs.cloudflare.com
+
 # Digital Certificates
 ocsp.usertrust.com
+sa.symcb.com
 
 # Dynamic Placeholder Endpoints
+gravatar.com
+imagesak.secureserver.net
+imgix.net
 placehold.it
 placeholdit.imgix.net
+res.cloudinary.com
 
 # Front‑End Delivery Networks
 cdnjs.cloudflare.com
 gstatic.com
 
 # Infrastructure as a Service (IaaS)
+amazonaws.com
 s3.amazonaws.com
+
+# Media Delivery
+brightcove.net
+cdn.vidible.tv
+delivery.vidible.tv
+edge.api.brightcove.com
+giphy.com
+img.vidible.tv
+players.brightcove.net
+secure.brightcove.com
+videos.vidible.tv
+vidtech.cbsinteractive.com
 
 # Media Streaming
 voe.sx
+
+# TV & Movies
+themoviedb.com
+thetvdb.com
 
