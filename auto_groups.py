@@ -251,7 +251,7 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
 
     domains_to_clear = []
     mapping_inserts = []
-    
+
     for domain_id, comment in cursor.fetchall():
         if comment.strip().startswith("#"):
             continue
