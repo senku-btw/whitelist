@@ -2,12 +2,20 @@
 getblockify.com
 mobileproxy.space
 
+# Commercial Business Applications
+jsdelivr.net
+sourceforge.net
+
 # Digital Certificates
 ocsp.usertrust.com
 
+# Dynamic Placeholder Endpoints
+placehold.it
+placeholdit.imgix.net
+
+# Front‑End Delivery Networks
+cdnjs.cloudflare.com
+
 # Media Streaming
 voe.sx
-
-# Commercial Business Applications
-sourceforge.net
 
