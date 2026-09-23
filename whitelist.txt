@@ -1,13 +1,1 @@
-# Software & Open-Source Infrastructure
-jsdelivr.net
-sourceforge.net
 
-# Digital Certificates
-ocsp.usertrust.com
-
-# Media Streaming
-voe.sx
-
-# Adblock Testing
-mobileproxy.space
-getblockify.com
