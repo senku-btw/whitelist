@@ -15,6 +15,7 @@ placeholdit.imgix.net
 
 # Front‑End Delivery Networks
 cdnjs.cloudflare.com
+gstatic.com
 
 # Media Streaming
 voe.sx
