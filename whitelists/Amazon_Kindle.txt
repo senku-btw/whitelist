@@ -1,8 +1,0 @@
-cognito-identity.us-east-1.amazonaws.com
-det-ta-g7g.amazon.com
-device-messaging-na.amazon.com
-ocsp.rootg2.amazontrust.com
-s3-eu-west-1.amazonaws.com
-todo-ta-g7g.amazon.com
-unagi-na.amazon.com
-us-east-1.amazonaws.com

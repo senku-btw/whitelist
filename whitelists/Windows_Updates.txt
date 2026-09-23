@@ -1,6 +1,0 @@
-ctldl.windowsupdate.com
-displaycatalog.mp.microsoft.com
-dl.delivery.mp.microsoft.com
-fe3.delivery.dsp.mp.microsoft.com.nsatc.net
-sls.update.microsoft.com.akadns.net
-tlu.dl.delivery.mp.microsoft.com
