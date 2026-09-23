@@ -1,7 +1,0 @@
-c.s-microsoft.com
-g.live.com
-i.s-microsoft.com
-login.live.com
-outlook.live.com
-outlook.office365.com
-products.office.com
