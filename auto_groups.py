@@ -47,7 +47,6 @@ GIT_TIMEOUT_SECONDS = 30
 def generate_mixed_hex_comment(length: int = 7) -> str:
     """Generates a random hex string guaranteed to contain both digits and letters (a-f)."""
     while True:
-        # Generate 4 random bytes (8 hex characters) and truncate to requested length
         token = secrets.token_hex(4)[:length]
         if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
             return token
@@ -74,11 +73,9 @@ def is_valid_domain(domain: str) -> bool:
 
     domain = domain.strip()
 
-    # Total length check (RFC 1035)
     if len(domain) > 253:
         return False
 
-    # Regex for standard valid FQDNs
     pattern = re.compile(
         r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$"
     )
@@ -93,7 +90,6 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     merged_data = defaultdict(set)
     current_comment = None
 
-    # 1. Parse existing whitelist.txt file
     if WHITELIST_TXT_PATH.exists():
         with open(WHITELIST_TXT_PATH, "r", encoding="utf-8") as f:
             for line in f:
@@ -105,7 +101,6 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
                 elif current_comment and is_valid_domain(line):
                     merged_data[current_comment].add(line)
 
-    # 2. Extract '#' entries from the database along with their primary key IDs
     cursor.execute(
         "SELECT id, domain, comment FROM domainlist "
         "WHERE type = 0 AND comment LIKE '#%'"
@@ -121,12 +116,10 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
             merged_data[clean_comment].add(clean_domain)
             db_ids_to_delete.append(domain_id)
 
-    # 3. Secure data in immutable structures
     immutable_whitelist = MappingProxyType(
         {comment: frozenset(domains) for comment, domains in merged_data.items()}
     )
 
-    # 4. Re-create whitelist.txt from scratch in strict alphabetical order
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
         for comment in sorted(immutable_whitelist.keys()):
             f.write(f"{comment}\n")
@@ -154,24 +147,39 @@ def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
 
 
 def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
-    """Ensures Default group exists, creates new groups, and returns group mapping."""
-    cursor.execute('SELECT id, name FROM "group"')
-    existing_group_dict = {}
-    for group_id, name in cursor.fetchall():
-        cleaned_name = clean_to_title_case(name)
-        if cleaned_name:
-            existing_group_dict[cleaned_name] = group_id
-
+    """
+    Purges all non-Default groups and their domain links, recreates missing groups
+    from whitelist comments, and returns a dictionary mapping group names to IDs.
+    """
     current_timestamp = int(time.time())
-    if DEFAULT_GROUP not in existing_group_dict:
+
+    # 1. Ensure 'Default' group exists and acquire its ID
+    cursor.execute('SELECT id FROM "group" WHERE name = ?', (DEFAULT_GROUP,))
+    default_row = cursor.fetchone()
+
+    if default_row:
+        default_group_id = default_row[0]
+    else:
         cursor.execute(
             'INSERT INTO "group" (name, date_added, date_modified, description) '
             "VALUES (?, ?, ?, ?)",
             (DEFAULT_GROUP, current_timestamp, current_timestamp, ""),
         )
-        existing_group_dict[DEFAULT_GROUP] = cursor.lastrowid
+        default_group_id = cursor.lastrowid
         print(f"Created missing '{DEFAULT_GROUP}' group.")
 
+    # 2. Delete all domain-group associations and groups other than 'Default'
+    cursor.execute(
+        "DELETE FROM domainlist_by_group WHERE group_id != ?",
+        (default_group_id,),
+    )
+    cursor.execute(
+        'DELETE FROM "group" WHERE id != ?',
+        (default_group_id,),
+    )
+    print("Purged all previous non-Default groups and mappings.")
+
+    # 3. Extract group names from current database comments
     cursor.execute(
         "SELECT comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
@@ -183,15 +191,16 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             continue
 
         cleaned_comment = clean_to_title_case(row[0])
-        if cleaned_comment and cleaned_comment not in SKIPPED_GROUPS:
+        if cleaned_comment and cleaned_comment not in SKIPPED_GROUPS and cleaned_comment != DEFAULT_GROUP:
             whitelisted_comments.add(cleaned_comment)
 
-    new_groups = whitelisted_comments - set(existing_group_dict.keys())
+    # 4. Insert newly discovered groups
+    group_dict = {DEFAULT_GROUP: default_group_id}
 
-    if new_groups:
+    if whitelisted_comments:
         new_group_data = [
             (name, current_timestamp, current_timestamp, "")
-            for name in sorted(new_groups)
+            for name in sorted(whitelisted_comments)
         ]
         cursor.executemany(
             'INSERT INTO "group" (name, date_added, date_modified, description) '
@@ -199,15 +208,15 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             new_group_data,
         )
 
-        cursor.execute('SELECT id, name FROM "group"')
+        cursor.execute('SELECT id, name FROM "group" WHERE id != ?', (default_group_id,))
         for group_id, name in cursor.fetchall():
             cleaned_name = clean_to_title_case(name)
             if cleaned_name:
-                existing_group_dict[cleaned_name] = group_id
+                group_dict[cleaned_name] = group_id
 
-        print(f"Successfully inserted {len(new_groups)} new group(s).")
+        print(f"Successfully recreated {len(whitelisted_comments)} group(s).")
 
-    return existing_group_dict
+    return group_dict
 
 
 def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
@@ -243,7 +252,6 @@ def push_to_github():
     """Commits and pushes whitelist.txt to GitHub autonomously using a mixed hex message."""
     repo_dir = WHITELIST_TXT_PATH.parent
 
-    # Configure non-interactive git environment variables
     env = os.environ.copy()
     env["GIT_TERMINAL_PROMPT"] = "0"
     env["GIT_AUTHOR_NAME"] = GIT_BOT_NAME
@@ -252,7 +260,6 @@ def push_to_github():
     env["GIT_COMMITTER_EMAIL"] = GIT_BOT_EMAIL
 
     try:
-        # 1. Add file to staging
         subprocess.run(
             ["git", "add", "whitelist.txt"],
             cwd=repo_dir,
@@ -262,7 +269,6 @@ def push_to_github():
             env=env,
         )
 
-        # 2. Check for pending changes
         status = subprocess.run(
             ["git", "status", "--porcelain"],
             cwd=repo_dir,
@@ -277,7 +283,6 @@ def push_to_github():
             print("No changes to whitelist.txt. Skipping GitHub push.")
             return
 
-        # 3. Commit changes using guaranteed mixed hex string (e.g. "fcbe59b")
         commit_hex = generate_mixed_hex_comment(7)
         subprocess.run(
             ["git", "commit", "-m", commit_hex],
@@ -288,7 +293,6 @@ def push_to_github():
             env=env,
         )
 
-        # 4. Pull remote changes with rebase to prevent non-fast-forward push rejections
         subprocess.run(
             ["git", "pull", "--rebase", "origin", "main"],
             cwd=repo_dir,
@@ -298,7 +302,6 @@ def push_to_github():
             env=env,
         )
 
-        # 5. Push changes
         subprocess.run(
             ["git", "push"],
             cwd=repo_dir,
@@ -341,10 +344,9 @@ def run_sync():
             "and file generation completed seamlessly."
         )
 
-        # Autonomous push to GitHub
         push_to_github()
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:
         conn.rollback()
         print(
             f"FATAL ERROR: Operation failed. Rolled back database changes.\n"
