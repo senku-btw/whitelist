@@ -106,7 +106,9 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
     return categories
 
 
-def _merge_existing_immutables(target_dir: Path, categories: Dict[str, Set[str]]) -> None:
+def _merge_existing_immutables(
+    target_dir: Path, categories: Dict[str, Set[str]]
+) -> None:
     """
     Merges existing file entries from target_dir for specific immutable categories.
     This ensures these categories are append-only.
