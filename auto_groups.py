@@ -1,17 +1,18 @@
 """
 Module for synchronizing Pi-hole groups and whitelist files.
 Automatically creates groups based on whitelist comments, maps domains,
-exports '#' prefixed categories to a separate text file, and pushes to GitHub with a random hex commit message.
+exports '#' prefixed categories to a separate text file, and pushes to GitHub 
+with a random 7-character hex commit message containing mixed letters and numbers.
 """
 
 import fcntl
 import os
 import re
+import secrets
 import sqlite3
 import subprocess
 import sys
 import time
-import uuid
 from collections import defaultdict
 from pathlib import Path
 from types import MappingProxyType
@@ -41,6 +42,15 @@ CORRECTIONS = MappingProxyType(
 GIT_BOT_NAME = "Pi-hole Auto Sync Bot"
 GIT_BOT_EMAIL = "pihole-bot@users.noreply.github.com"
 GIT_TIMEOUT_SECONDS = 30
+
+
+def generate_mixed_hex_comment(length: int = 7) -> str:
+    """Generates a random hex string guaranteed to contain both digits and letters (a-f)."""
+    while True:
+        # Generate 4 random bytes (8 hex characters) and truncate to requested length
+        token = secrets.token_hex(4)[:length]
+        if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
+            return token
 
 
 def clean_to_title_case(text: str) -> str:
@@ -230,7 +240,7 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
 
 
 def push_to_github():
-    """Commits and pushes whitelist.txt to GitHub autonomously using a random hex message."""
+    """Commits and pushes whitelist.txt to GitHub autonomously using a mixed hex message."""
     repo_dir = WHITELIST_TXT_PATH.parent
 
     # Configure non-interactive git environment variables
@@ -267,10 +277,10 @@ def push_to_github():
             print("No changes to whitelist.txt. Skipping GitHub push.")
             return
 
-        # 3. Commit changes using a random 7-character hex string
-        random_hex = uuid.uuid4().hex[:7]
+        # 3. Commit changes using guaranteed mixed hex string (e.g. "fcbe59b")
+        commit_hex = generate_mixed_hex_comment(7)
         subprocess.run(
-            ["git", "commit", "-m", random_hex],
+            ["git", "commit", "-m", commit_hex],
             cwd=repo_dir,
             check=True,
             capture_output=True,
@@ -297,7 +307,7 @@ def push_to_github():
             timeout=GIT_TIMEOUT_SECONDS,
             env=env,
         )
-        print(f"Successfully pushed updated whitelist.txt to GitHub with commit message [{random_hex}].")
+        print(f"Successfully pushed updated whitelist.txt to GitHub with commit message [{commit_hex}].")
 
     except subprocess.TimeoutExpired as e:
         print(f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}")
