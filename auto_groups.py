@@ -4,15 +4,15 @@ Automatically creates groups based on whitelist comments, maps domains,
 and exports '#' prefixed categories to a separate text file.
 """
 
-import sqlite3
-import re
-import time
-import sys
 import fcntl
+import re
+import sqlite3
+import sys
+import time
+from collections import defaultdict
 from pathlib import Path
 from types import MappingProxyType
-from collections import defaultdict
-from typing import List, Dict
+from typing import Dict, List
 
 # Define paths
 DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
