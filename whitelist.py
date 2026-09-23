@@ -67,6 +67,7 @@ def sanitize_domain(domain: str) -> str:
 def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
     """
     Reads exact whitelists (type = 0) from gravity.db with strict read-only URI and timeout.
+    Ignores entries that have no comment or have a comment starting with '#'.
     """
     if not db_path.is_file():
         sys.exit(1)
@@ -85,11 +86,16 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
                 raw_domain = row[0] if row[0] is not None else ""
                 comment = row[1] if row[1] is not None else ""
 
+                category_name = comment.strip()
+
+                # Filter: Exclude entries with no comment or comments starting with '#'
+                if not category_name or category_name.startswith("#"):
+                    continue
+
                 cleaned_domain = sanitize_domain(raw_domain)
                 if not cleaned_domain:
                     continue
 
-                category_name = comment.strip()
                 if category_name not in categories:
                     categories[category_name] = set()
                 categories[category_name].add(cleaned_domain)
@@ -100,25 +106,31 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
     return categories
 
 
-def _merge_existing_hosts(target_dir: Path, categories: Dict[str, Set[str]]) -> None:
+def _merge_existing_immutables(target_dir: Path, categories: Dict[str, Set[str]]) -> None:
     """
-    Merges existing 'hosts.txt' file entries from target_dir into categories['hosts'].
+    Merges existing file entries from target_dir for specific immutable categories.
+    This ensures these categories are append-only.
     """
-    hosts_file_path = target_dir / "hosts.txt"
-    if not hosts_file_path.is_file():
-        return
+    immutable_categories = ["hosts", "Facebook"]
 
-    if "hosts" not in categories:
-        categories["hosts"] = set()
+    for category in immutable_categories:
+        file_name = f"{sanitize_filename(category)}.txt"
+        file_path = target_dir / file_name
+        
+        if not file_path.is_file():
+            continue
 
-    try:
-        with hosts_file_path.open("r", encoding="utf-8") as f:
-            for line in f:
-                clean_line = line.strip()
-                if clean_line:
-                    categories["hosts"].add(clean_line)
-    except OSError:
-        pass
+        if category not in categories:
+            categories[category] = set()
+
+        try:
+            with file_path.open("r", encoding="utf-8") as f:
+                for line in f:
+                    clean_line = line.strip()
+                    if clean_line:
+                        categories[category].add(clean_line)
+        except OSError:
+            pass
 
 
 def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> None:
@@ -126,7 +138,7 @@ def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> Non
     Writes categorized domains to individual text files in the temporary directory.
     """
     for comment, domains in categories.items():
-        file_name = f"{sanitize_filename(comment)}.txt" if comment else "whitelist.txt"
+        file_name = f"{sanitize_filename(comment)}.txt"
         file_path = tmp_dir / file_name
 
         unique_domains = sorted(frozenset(domains))
@@ -141,10 +153,10 @@ def write_whitelists_atomically(
 ) -> None:
     """
     Performs a true atomic directory swap to guarantee filesystem integrity.
-    Merges existing 'hosts' file to ensure append-only immutability.
+    Merges existing files for immutable categories to ensure append-only behavior.
     """
     target_dir.parent.mkdir(parents=True, exist_ok=True)
-    _merge_existing_hosts(target_dir, categories)
+    _merge_existing_immutables(target_dir, categories)
 
     hex_id = secrets.token_hex(4)
     tmp_dir = target_dir.with_name(f".{target_dir.name}_tmp_{hex_id}")
