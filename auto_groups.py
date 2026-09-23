@@ -19,10 +19,7 @@ from types import MappingProxyType
 from typing import Dict, List
 
 # Define paths
-DB_PATH = Path(
-    "/mnt/dietpi_userdata/docker/primary-stack/pihole/"
-    "etc-pihole/gravity.db"
-)
+DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
 LOCK_FILE_PATH = Path("/tmp/pihole_group_sync.lock")
 WHITELIST_TXT_PATH = Path(__file__).parent / "whitelist.txt"
 
