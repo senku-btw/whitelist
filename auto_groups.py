@@ -19,7 +19,9 @@ from types import MappingProxyType
 from typing import Dict, List
 
 # Define paths
-DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
+DB_PATH = Path(
+    "/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db"
+)
 LOCK_FILE_PATH = Path("/tmp/pihole_group_sync.lock")
 WHITELIST_TXT_PATH = Path(__file__).parent / "whitelist.txt"
 
@@ -45,7 +47,7 @@ GIT_TIMEOUT_SECONDS = 30
 
 
 def generate_mixed_hex_comment(length: int = 7) -> str:
-    """Generates a random hex string guaranteed to contain both digits and letters (a-f)."""
+    """Generates a random hex string containing both digits and letters (a-f)."""
     while True:
         token = secrets.token_hex(4)[:length]
         if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
@@ -147,7 +149,7 @@ def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
 
 
 def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
-    """Records current client-to-group configurations before the database is purged."""
+    """Records current client-to-group configurations before database purge."""
     cursor.execute(
         """
         SELECT cbg.client_id, g.name
@@ -164,8 +166,8 @@ def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
 
 def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
-    Purges all non-Default groups and all group mappings across all tables,
-    recreates missing groups, and returns a dictionary mapping group names to IDs.
+    Purges non-Default groups and mappings, recreates missing groups,
+    and returns a mapping of group names to IDs.
     """
     current_timestamp = int(time.time())
 
@@ -276,7 +278,7 @@ def restore_client_mappings(
     client_backup: Dict[int, List[str]],
     group_dict: Dict[str, int],
 ):
-    """Re-links clients to the Default group and any newly recreated groups they belonged to."""
+    """Re-links clients to Default group and any newly recreated matching groups."""
     default_group_id = group_dict[DEFAULT_GROUP]
     mapping_inserts = set()
 
@@ -294,18 +296,19 @@ def restore_client_mappings(
 
     if mapping_inserts:
         cursor.executemany(
-            "INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO client_by_group (client_id, group_id) "
+            "VALUES (?, ?)",
             list(mapping_inserts),
         )
-        # Find unique clients affected
         unique_clients = len(set(c[0] for c in mapping_inserts))
         print(
-            f"Restored saved configurations and enforced Default fallback for {unique_clients} client(s)."
+            "Restored saved configurations and enforced Default fallback "
+            f"for {unique_clients} client(s)."
         )
 
 
 def reload_pihole_engine():
-    """Forces a full restart of the Pi-hole FTL container/service to guarantee a clean cache reload."""
+    """Forces a full restart of Pi-hole FTL engine to reload memory cache."""
     try:
         if os.path.exists("/.dockerenv"):
             subprocess.run(
@@ -325,12 +328,12 @@ def reload_pihole_engine():
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
         print(f"Warning: Failed to restart Pi-hole container. Details: {err_msg}")
-    except Exception as e:
+    except (OSError, subprocess.SubprocessError) as e:
         print(f"Warning: Could not automatically restart Pi-hole FTL: {e}")
 
 
 def push_to_github():
-    """Commits and pushes whitelist.txt to GitHub autonomously using a mixed hex message."""
+    """Commits and pushes whitelist.txt to GitHub autonomously."""
     repo_dir = WHITELIST_TXT_PATH.parent
 
     env = os.environ.copy()
@@ -392,17 +395,20 @@ def push_to_github():
             env=env,
         )
         print(
-            f"Successfully pushed updated whitelist.txt to GitHub with commit message [{commit_hex}]."
+            "Successfully pushed updated whitelist.txt to GitHub "
+            f"with commit message [{commit_hex}]."
         )
 
     except subprocess.TimeoutExpired as e:
         print(
-            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}"
+            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: "
+            f"{' '.join(e.cmd)}"
         )
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
         print(
-            f"ERROR: Git operation failed during command: {' '.join(e.cmd)}\nDetails: {err_msg}"
+            "ERROR: Git operation failed during command: "
+            f"{' '.join(e.cmd)}\nDetails: {err_msg}"
         )
 
 
@@ -444,10 +450,10 @@ def run_sync():
         # Push file to remote
         push_to_github()
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         conn.rollback()
         print(
-            f"FATAL ERROR: Operation failed. Rolled back database changes.\n"
+            "FATAL ERROR: Operation failed. Rolled back database changes.\n"
             f"Details: {e}"
         )
     finally:
@@ -460,12 +466,12 @@ def main():
         with open(LOCK_FILE_PATH, "w", encoding="utf-8") as lock_file:
             try:
                 fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except IOError:
+            except OSError:
                 print("ERROR: Another instance of this script is already running.")
                 sys.exit(1)
 
             run_sync()
-    except IOError as err:
+    except OSError as err:
         print(f"Failed to open or lock file: {err}")
         sys.exit(1)
 
