@@ -85,7 +85,8 @@ def is_valid_domain(domain: str) -> bool:
 def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     """
     Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt in
-    alphabetical order, and returns the database IDs of migrated domains for deletion.
+    alphabetical order without duplicate domains, and returns the database IDs
+    of migrated domains for deletion.
     """
     merged_data = defaultdict(set)
     current_comment = None
@@ -116,9 +117,18 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
             merged_data[clean_comment].add(clean_domain)
             db_ids_to_delete.append(domain_id)
 
-    immutable_whitelist = MappingProxyType(
-        {comment: frozenset(domains) for comment, domains in merged_data.items()}
-    )
+    seen_domains = set()
+    cleaned_whitelist = {}
+
+    for comment in sorted(merged_data.keys()):
+        unique_domains = sorted(
+            [d for d in merged_data[comment] if d not in seen_domains]
+        )
+        if unique_domains:
+            cleaned_whitelist[comment] = frozenset(unique_domains)
+            seen_domains.update(unique_domains)
+
+    immutable_whitelist = MappingProxyType(cleaned_whitelist)
 
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
         for comment in sorted(immutable_whitelist.keys()):
