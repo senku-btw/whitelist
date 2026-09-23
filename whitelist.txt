@@ -17,6 +17,9 @@ placeholdit.imgix.net
 cdnjs.cloudflare.com
 gstatic.com
 
+# Infrastructure as a Service (IaaS)
+s3.amazonaws.com
+
 # Media Streaming
 voe.sx
 
