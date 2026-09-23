@@ -264,28 +264,26 @@ def reload_pihole_engine():
         if os.path.exists("/.dockerenv"):
             # Running inside the container
             subprocess.run(
-                ["pihole", "restartdns", "reload-lists"], 
+                ["pkill", "-HUP", "-f", "pihole-FTL"], 
                 check=True, 
                 capture_output=True, 
                 text=True
             )
         else:
-            # Running on the host, targeting the docker container
+            # Running on the host: signal the container directly via Docker daemon
             subprocess.run(
-                ["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"], 
+                ["docker", "kill", "--signal=HUP", "pihole"], 
                 check=True, 
                 capture_output=True, 
                 text=True
             )
         print("Successfully reloaded Pi-hole FTL memory cache.")
-    except FileNotFoundError as e:
-        print(f"Warning: Required command not found. Could not reload cache: {e}")
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
-        print(f"Warning: Docker command failed. (Is your container named something other than 'pihole'?). Details: {err_msg}")
+        print(f"Warning: Failed to send reload signal to Pi-hole container. Details: {err_msg}")
     except Exception as e:
         print(f"Warning: Could not automatically reload Pi-hole FTL cache: {e}")
-
+        
 def push_to_github():
     """Commits and pushes whitelist.txt to GitHub autonomously using a mixed hex message."""
     repo_dir = WHITELIST_TXT_PATH.parent
