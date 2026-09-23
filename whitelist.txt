@@ -1,1 +1,13 @@
+# Adblock Testing
+getblockify.com
+mobileproxy.space
+
+# Digital Certificates
+ocsp.usertrust.com
+
+# Media Streaming
+voe.sx
+
+# Open-Source Infrastructure
+sourceforge.net
 
