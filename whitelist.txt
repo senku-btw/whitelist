@@ -36,6 +36,7 @@ delivery.vidible.tv
 edge.api.brightcove.com
 giphy.com
 img.vidible.tv
+imgs.xkcd.com
 players.brightcove.net
 secure.brightcove.com
 videos.vidible.tv
