@@ -7,13 +7,11 @@
 6-edge-chat.facebook.com
 api.facebook.com
 b-api.facebook.com
-bigzipfiles.facebook.com
 cdn.fbsbx.com
 chat-e2ee-mini-fallback.facebook.com
 chat-e2ee-mini.facebook.com
 connect.facebook.com
 connect.facebook.net
-creative.ak.fbcdn.net
 edge-chat.facebook.com
 edge-chat.messenger.com
 edge-mqtt-fallback.facebook.com
@@ -33,9 +31,7 @@ external-ort2-1.xx.fbcdn.net
 facebook.com
 facebook.net
 fb.me
-fbcdn-creative-a.akamaihd.net
 fbcdn.net
-instagram.c10r.facebook.com
 l.facebook.com
 m.facebook.com
 mqtt-mini.facebook.com
@@ -44,7 +40,6 @@ photos-a-ord.xx.fbcdn.net
 photos-a.xx.fbcdn.net
 photos-b-ord.xx.fbcdn.net
 photos-b.xx.fbcdn.net
-portal.fb.com
 profile-a-atl.xx.fbcdn.net
 profile-a-dfw.xx.fbcdn.net
 profile-a-iad.xx.fbcdn.net
