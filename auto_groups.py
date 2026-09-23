@@ -1,7 +1,7 @@
 """
 Module for synchronizing Pi-hole groups and whitelist files.
 Automatically creates groups based on whitelist comments, maps domains,
-exports '#' prefixed categories to a separate text file, and pushes to GitHub.
+exports '#' prefixed categories to a separate text file, and pushes to GitHub with a random hex commit message.
 """
 
 import fcntl
@@ -11,6 +11,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+import uuid
 from collections import defaultdict
 from pathlib import Path
 from types import MappingProxyType
@@ -229,12 +230,12 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
 
 
 def push_to_github():
-    """Commits and pushes whitelist.txt to GitHub autonomously."""
+    """Commits and pushes whitelist.txt to GitHub autonomously using a random hex message."""
     repo_dir = WHITELIST_TXT_PATH.parent
 
     # Configure non-interactive git environment variables
     env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"  # Fail immediately instead of waiting for a password prompt
+    env["GIT_TERMINAL_PROMPT"] = "0"
     env["GIT_AUTHOR_NAME"] = GIT_BOT_NAME
     env["GIT_AUTHOR_EMAIL"] = GIT_BOT_EMAIL
     env["GIT_COMMITTER_NAME"] = GIT_BOT_NAME
@@ -266,10 +267,10 @@ def push_to_github():
             print("No changes to whitelist.txt. Skipping GitHub push.")
             return
 
-        # 3. Commit changes
-        commit_msg = f"Auto-sync whitelist.txt - {time.strftime('%Y-%m-%d %H:%M:%S')}"
+        # 3. Commit changes using a random 7-character hex string
+        random_hex = uuid.uuid4().hex[:7]
         subprocess.run(
-            ["git", "commit", "-m", commit_msg],
+            ["git", "commit", "-m", random_hex],
             cwd=repo_dir,
             check=True,
             capture_output=True,
@@ -281,7 +282,7 @@ def push_to_github():
         subprocess.run(
             ["git", "pull", "--rebase", "origin", "main"],
             cwd=repo_dir,
-            check=False,  # Continue even if remote branch doesn't exist or doesn't pull
+            check=False,
             capture_output=True,
             timeout=GIT_TIMEOUT_SECONDS,
             env=env,
@@ -296,7 +297,7 @@ def push_to_github():
             timeout=GIT_TIMEOUT_SECONDS,
             env=env,
         )
-        print("Successfully pushed updated whitelist.txt to GitHub.")
+        print(f"Successfully pushed updated whitelist.txt to GitHub with commit message [{random_hex}].")
 
     except subprocess.TimeoutExpired as e:
         print(f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}")
