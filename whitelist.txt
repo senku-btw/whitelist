@@ -3,12 +3,12 @@ getblockify.com
 mobileproxy.space
 
 # Commercial Business Applications
-jsdelivr.net
 sourceforge.net
 
 # Content Delivery Networks (CDNs)
 cdn.cloudflare.net
 cdnjs.cloudflare.com
+jsdelivr.net
 
 # Digital Certificates
 ocsp.usertrust.com
@@ -23,7 +23,6 @@ placeholdit.imgix.net
 res.cloudinary.com
 
 # Front‑End Delivery Networks
-cdnjs.cloudflare.com
 gstatic.com
 
 # Infrastructure as a Service (IaaS)
