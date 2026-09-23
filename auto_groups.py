@@ -261,20 +261,30 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
 def reload_pihole_engine():
     """Commands Pi-hole FTL to reload gravity database changes into memory."""
     try:
-        # Check if pihole command is accessible directly or via docker
-        cmd = ["pihole", "restartdns", "reload-lists"]
         if os.path.exists("/.dockerenv"):
-            subprocess.run(cmd, check=True, capture_output=True, text=True)
+            # Running inside the container
+            subprocess.run(
+                ["pihole", "restartdns", "reload-lists"], 
+                check=True, 
+                capture_output=True, 
+                text=True
+            )
         else:
-            # Running on host targeting docker container if applicable
-            docker_cmd = ["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"]
-            res = subprocess.run(cmd, capture_output=True, text=True)
-            if res.returncode != 0:
-                subprocess.run(docker_cmd, check=True, capture_output=True, text=True)
+            # Running on the host, targeting the docker container
+            subprocess.run(
+                ["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"], 
+                check=True, 
+                capture_output=True, 
+                text=True
+            )
         print("Successfully reloaded Pi-hole FTL memory cache.")
+    except FileNotFoundError as e:
+        print(f"Warning: Required command not found. Could not reload cache: {e}")
+    except subprocess.CalledProcessError as e:
+        err_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
+        print(f"Warning: Docker command failed. (Is your container named something other than 'pihole'?). Details: {err_msg}")
     except Exception as e:
         print(f"Warning: Could not automatically reload Pi-hole FTL cache: {e}")
-
 
 def push_to_github():
     """Commits and pushes whitelist.txt to GitHub autonomously using a mixed hex message."""
