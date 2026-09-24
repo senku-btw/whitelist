@@ -1,0 +1,9 @@
+accounts.spotify.com
+api.spotify.com
+audio-fa.scdn.co
+i.scdn.co
+open.spotify.com
+spotify.com
+www.spotify.com
+spotifycdn.com
+spclient.wg.spotify.com
