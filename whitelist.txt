@@ -43,7 +43,7 @@ videos.vidible.tv
 vidtech.cbsinteractive.com
 voe.sx
 
-# TV & Movies
+# Digital Media & Entertainment
 themoviedb.com
 thetvdb.com
 
