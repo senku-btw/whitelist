@@ -224,28 +224,24 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     db_ids_to_delete = []
     for domain_id, domain, comment in cursor.fetchall():
         clean_dom = sanitize_domain(domain)
-        raw_comment = comment.lstrip("#").strip()
-        formatted_comment = clean_to_title_case(raw_comment)
-        clean_comment = f"# {formatted_comment}"
+        clean_cmt = f"# {clean_to_title_case(comment.lstrip('#').strip())}"
 
         if is_valid_domain(clean_dom):
-            if clean_comment not in merged_data:
-                merged_data[clean_comment] = set()
-            merged_data[clean_comment].add(clean_dom)
+            if clean_cmt not in merged_data:
+                merged_data[clean_cmt] = set()
+            merged_data[clean_cmt].add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
     cleaned_whitelist: Dict[str, List[str]] = {}
 
-    for comment, domains in merged_data.items():
-        valid_unique_domains = sorted(
-            [d for d in domains if is_valid_domain(d)]
-        )
-        if valid_unique_domains:
-            cleaned_whitelist[comment] = valid_unique_domains
+    for cat_comment, domains in merged_data.items():
+        valid_unique = sorted([d for d in domains if is_valid_domain(d)])
+        if valid_unique:
+            cleaned_whitelist[cat_comment] = valid_unique
 
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
-        for comment, doms in cleaned_whitelist.items():
-            f.write(f"{comment}\n")
+        for cat_comment, doms in cleaned_whitelist.items():
+            f.write(f"{cat_comment}\n")
             for dom in doms:
                 f.write(f"{dom}\n")
             f.write("\n")
@@ -723,14 +719,12 @@ def run_sync_pipeline():
         conn.commit()
         print("Database transaction committed successfully.")
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         conn.rollback()
         print(
             f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}"
         )
         sys.exit(1)
-    finally:
-        conn.close()
 
     categories = read_db_whitelists(DB_PATH)
     write_whitelists_atomically(categories, WHITELISTS_DIR)
