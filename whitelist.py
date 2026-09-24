@@ -102,14 +102,54 @@ def sanitize_domain(domain: str) -> str:
 
 
 def clean_to_title_case(text: str) -> str:
-    """Sanitize control chars, normalize whitespace, apply corrections, and Title Case."""
+    """Sanitize control chars, normalize whitespace, apply corrections, and Title Case,
+    preserving exact letter casing inside parentheses."""
     if not text:
         return ""
     clean = re.sub(r"[\x00-\x1f\x7f]+", "", str(text))
-    clean = re.sub(r"\s+", " ", clean).strip().title()
-    if clean in CORRECTIONS:
-        return CORRECTIONS[clean]
-    return clean
+    clean = re.sub(r"\s+", " ", clean).strip()
+    if not clean:
+        return ""
+
+    # Split string by parenthetical sections: e.g. "category (VSCs)" -> ["category ", "(VSCs)", ""]
+    parts = re.split(r"(\([^\)]*\))", clean)
+    processed = []
+    for part in parts:
+        if part.startswith("(") and part.endswith(")"):
+            # Keep parenthetical text exactly as inputted
+            processed.append(part)
+        else:
+            processed.append(part.title())
+
+    result = "".join(processed)
+    if result in CORRECTIONS:
+        return CORRECTIONS[result]
+    return result
+
+
+def split_comment_into_groups(comment: str) -> List[str]:
+    """
+    Splits a comment string into individual group names if multiple groups are specified
+    (e.g., separated by ',', ';', '/', ' & ', or ' and '), preserving parentheses content.
+    """
+    if not comment:
+        return []
+
+    parts = re.split(r"(\([^\)]*\))", comment)
+    delim_pattern = re.compile(r"\s*(?:,|;|/|\s+&\s+|\s+and\s+)\s*", re.IGNORECASE)
+
+    groups = [""]
+    for part in parts:
+        if part.startswith("(") and part.endswith(")"):
+            groups[-1] += part
+        else:
+            subparts = delim_pattern.split(part)
+            groups[-1] += subparts[0]
+            for sub in subparts[1:]:
+                groups.append(sub)
+
+    cleaned_groups = [g.strip() for g in groups if g.strip()]
+    return cleaned_groups if cleaned_groups else [comment.strip()]
 
 
 def is_valid_domain(domain: str) -> bool:
@@ -155,7 +195,9 @@ def parse_whitelist_file() -> Dict[str, Set[str]]:
                 if not line:
                     continue
                 if line.startswith("#"):
-                    current_comment = f"# {line.lstrip('#').strip()}"
+                    raw_comment = line.lstrip("#").strip()
+                    formatted_comment = clean_to_title_case(raw_comment)
+                    current_comment = f"# {formatted_comment}"
                     if current_comment not in merged_data:
                         merged_data[current_comment] = set()
                 elif current_comment:
@@ -169,8 +211,8 @@ def parse_whitelist_file() -> Dict[str, Set[str]]:
 def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     """
     Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt
-    preserving the original category header sequence while sorting and
-    deduplicating the domain links strictly under each category.
+    preserving category order and sorting domains under each category.
+    Allows domains to exist across multiple categories without pruning.
     """
     merged_data = parse_whitelist_file()
 
@@ -182,7 +224,9 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     db_ids_to_delete = []
     for domain_id, domain, comment in cursor.fetchall():
         clean_dom = sanitize_domain(domain)
-        clean_comment = f"# {comment.lstrip('#').strip()}"
+        raw_comment = comment.lstrip("#").strip()
+        formatted_comment = clean_to_title_case(raw_comment)
+        clean_comment = f"# {formatted_comment}"
 
         if is_valid_domain(clean_dom):
             if clean_comment not in merged_data:
@@ -190,18 +234,14 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
             merged_data[clean_comment].add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
-    seen_domains: Set[str] = set()
     cleaned_whitelist: Dict[str, List[str]] = {}
 
-    # Iterate items directly to preserve category order and satisfy pylint
     for comment, domains in merged_data.items():
-        # Sort ONLY the domains within this category container
         valid_unique_domains = sorted(
-            [d for d in domains if d not in seen_domains and is_valid_domain(d)]
+            [d for d in domains if is_valid_domain(d)]
         )
         if valid_unique_domains:
             cleaned_whitelist[comment] = valid_unique_domains
-            seen_domains.update(valid_unique_domains)
 
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
         for comment, doms in cleaned_whitelist.items():
@@ -267,7 +307,6 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         default_group_id = cursor.lastrowid
         print(f"Created missing '{DEFAULT_GROUP}' group.")
 
-    # Clear non-default associations across all relational tables
     cursor.execute(
         "DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,)
     )
@@ -278,7 +317,6 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         "DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,)
     )
 
-    # Delete all groups except 'Default'
     cursor.execute('DELETE FROM "group" WHERE id != ?', (default_group_id,))
     print("Purged all previous non-Default groups and associated mappings.")
 
@@ -293,13 +331,14 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
             continue
 
-        cleaned_comment = clean_to_title_case(raw_comment)
-        if (
-            cleaned_comment
-            and cleaned_comment not in SKIPPED_GROUPS
-            and cleaned_comment != DEFAULT_GROUP
-        ):
-            comment_counts[cleaned_comment] += 1
+        for cat in split_comment_into_groups(raw_comment):
+            cleaned_comment = clean_to_title_case(cat)
+            if (
+                cleaned_comment
+                and cleaned_comment not in SKIPPED_GROUPS
+                and cleaned_comment != DEFAULT_GROUP
+            ):
+                comment_counts[cleaned_comment] += 1
 
     whitelisted_comments = {
         comment
@@ -337,7 +376,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
 
 
 def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
-    """Maps domains to corresponding groups based on whitelist comments."""
+    """Maps domains to all corresponding groups based on whitelist comments."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
@@ -352,14 +391,17 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
         if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
             continue
 
-        cleaned_comment = clean_to_title_case(raw_comment)
         domains_to_clear.append((domain_id,))
 
-        if cleaned_comment and cleaned_comment in group_dict:
-            group_id = group_dict[cleaned_comment]
-            mapping_inserts.append((domain_id, group_id))
-        else:
-            # Fall back to Default group if comment didn't meet creation threshold
+        matched_any = False
+        for cat in split_comment_into_groups(raw_comment):
+            cleaned_comment = clean_to_title_case(cat)
+            if cleaned_comment and cleaned_comment in group_dict:
+                group_id = group_dict[cleaned_comment]
+                mapping_inserts.append((domain_id, group_id))
+                matched_any = True
+
+        if not matched_any:
             mapping_inserts.append((domain_id, default_group_id))
 
     if domains_to_clear:
@@ -446,13 +488,14 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
                 if not cleaned_domain or not is_valid_domain(cleaned_domain):
                     continue
 
-                cleaned_category = clean_to_title_case(category_name)
-                if not cleaned_category:
-                    continue
+                for cat in split_comment_into_groups(category_name):
+                    cleaned_category = clean_to_title_case(cat)
+                    if not cleaned_category:
+                        continue
 
-                if cleaned_category not in categories:
-                    categories[cleaned_category] = set()
-                categories[cleaned_category].add(cleaned_domain)
+                    if cleaned_category not in categories:
+                        categories[cleaned_category] = set()
+                    categories[cleaned_category].add(cleaned_domain)
 
     except sqlite3.Error as e:
         print(f"Error reading gravity.db for file extraction: {e}")
@@ -574,7 +617,6 @@ def git_sync(repo_dir: Path) -> None:
         print(f"Error: {repo_dir} is not a Git repository.")
         return
 
-    # Clean up stale lock files
     index_lock = repo_dir / ".git" / "index.lock"
     if index_lock.is_file():
         try:
@@ -590,7 +632,6 @@ def git_sync(repo_dir: Path) -> None:
     env["GIT_COMMITTER_EMAIL"] = GIT_BOT_EMAIL
 
     try:
-        # Pull upstream changes
         subprocess.run(
             ["git", "pull", "--rebase", "--autostash"],
             cwd=repo_dir,
@@ -600,7 +641,6 @@ def git_sync(repo_dir: Path) -> None:
             env=env,
         )
 
-        # Stage all file modifications (whitelist.txt and whitelists/)
         subprocess.run(
             ["git", "add", "-A"],
             cwd=repo_dir,
@@ -665,7 +705,6 @@ def run_sync_pipeline():
         print(f"FATAL: Database not found at {DB_PATH}")
         sys.exit(1)
 
-    # 1. Database Operations (Groups, Whitelist Migration & Relational Mapping)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
@@ -684,7 +723,7 @@ def run_sync_pipeline():
         conn.commit()
         print("Database transaction committed successfully.")
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
+    except Exception as e:
         conn.rollback()
         print(
             f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}"
@@ -693,14 +732,11 @@ def run_sync_pipeline():
     finally:
         conn.close()
 
-    # 2. Extract Whitelist Categories to Individual Files
     categories = read_db_whitelists(DB_PATH)
     write_whitelists_atomically(categories, WHITELISTS_DIR)
 
-    # 3. Reload Engine Memory Cache
     reload_pihole_engine()
 
-    # 4. Synchronize with Git Repository
     git_sync(SCRIPT_DIR)
 
 
