@@ -1,0 +1,11 @@
+www.msftconnecttest.com
+dns.msftncsi.com
+ctldl.windowsupdate.com
+sls.update.microsoft.com.akadns.net
+dl.delivery.mp.microsoft.com
+tlu.dl.delivery.mp.microsoft.com
+fe3.delivery.dsp.mp.microsoft.com.nsatc.net
+geo-prod.do.dsp.mp.microsoft.com
+login.live.com
+account.live.com
+login.microsoftonline.com
