@@ -291,7 +291,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
     )
 
-    comment_counts = defaultdict(int)
+    comment_counts: Dict[str, int] = defaultdict(int)
     for row in cursor.fetchall():
         raw_comment = row[0].strip()
         if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
