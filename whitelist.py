@@ -204,10 +204,10 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
             seen_domains.update(valid_unique_domains)
 
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
-        for comment, domains in cleaned_whitelist.items():
+        for comment, doms in cleaned_whitelist.items():
             f.write(f"{comment}\n")
-            for domain in domains:
-                f.write(f"{domain}\n")
+            for dom in doms:
+                f.write(f"{dom}\n")
             f.write("\n")
 
     return db_ids_to_delete
@@ -238,7 +238,7 @@ def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
         JOIN "group" g ON cbg.group_id = g.id
         """
     )
-    client_backup = defaultdict(list)
+    client_backup: Dict[int, List[str]] = defaultdict(list)
     for client_id, group_name in cursor.fetchall():
         client_backup[client_id].append(group_name)
 
