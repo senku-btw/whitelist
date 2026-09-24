@@ -5,6 +5,7 @@ android.clients.google.com
 appspot-preview.l.google.com
 clients1.google.com
 clients2.google.com
+clients2.googleusercontent.com
 clients3.google.com
 clients4.google.com
 clients5.google.com
@@ -20,3 +21,4 @@ lh3.googleusercontent.com
 oauthaccountmanager.googleapis.com
 www.google.com
 www.googleapis.com
+ytimg.l.google.com
