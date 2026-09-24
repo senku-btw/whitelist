@@ -7,4 +7,3 @@ redditstatic.com
 styles.redditmedia.com
 www.reddit.com
 www.redditmedia.com
-www.redditstatic.com
