@@ -116,7 +116,6 @@ def clean_to_title_case(text: str) -> str:
     processed = []
     for part in parts:
         if part.startswith("(") and part.endswith(")"):
-            # Keep parenthetical text exactly as inputted
             processed.append(part)
         else:
             processed.append(part.title())
@@ -129,14 +128,16 @@ def clean_to_title_case(text: str) -> str:
 
 def split_comment_into_groups(comment: str) -> List[str]:
     """
-    Splits a comment string into individual group names if multiple groups are specified
-    (e.g., separated by ',', ';', '/', ' & ', or ' and '), preserving parentheses content.
+    Splits a comment string into individual group names when separated by delimiters
+    like '/', ',', ';', ' & ', or ' and ' (e.g. 'Microsoft Windows/Spotify'),
+    while preserving multi-word group names and text inside parentheses.
     """
     if not comment:
         return []
 
+    # Isolate parenthetical blocks so delimiters inside parentheses aren't split
     parts = re.split(r"(\([^\)]*\))", comment)
-    delim_pattern = re.compile(r"\s*(?:,|;|/|\s+&\s+|\s+and\s+)\s*", re.IGNORECASE)
+    delim_pattern = re.compile(r"\s*(?:/|,|;|\s+&\s+|\s+and\s+)\s*", re.IGNORECASE)
 
     groups = [""]
     for part in parts:
@@ -224,12 +225,14 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     db_ids_to_delete = []
     for domain_id, domain, comment in cursor.fetchall():
         clean_dom = sanitize_domain(domain)
-        clean_cmt = f"# {clean_to_title_case(comment.lstrip('#').strip())}"
+        raw_comment = comment.lstrip("#").strip()
 
         if is_valid_domain(clean_dom):
-            if clean_cmt not in merged_data:
-                merged_data[clean_cmt] = set()
-            merged_data[clean_cmt].add(clean_dom)
+            for cat in split_comment_into_groups(raw_comment):
+                clean_cmt = f"# {clean_to_title_case(cat)}"
+                if clean_cmt not in merged_data:
+                    merged_data[clean_cmt] = set()
+                merged_data[clean_cmt].add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
     cleaned_whitelist: Dict[str, List[str]] = {}
@@ -725,6 +728,8 @@ def run_sync_pipeline():
             f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}"
         )
         sys.exit(1)
+    finally:
+        conn.close()
 
     categories = read_db_whitelists(DB_PATH)
     write_whitelists_atomically(categories, WHITELISTS_DIR)
