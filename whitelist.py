@@ -197,11 +197,7 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     for comment, domains in merged_data.items():
         # Sort ONLY the domains within this category container
         valid_unique_domains = sorted(
-            [
-                d
-                for d in domains
-                if d not in seen_domains and is_valid_domain(d)
-            ]
+            [d for d in domains if d not in seen_domains and is_valid_domain(d)]
         )
         if valid_unique_domains:
             cleaned_whitelist[comment] = valid_unique_domains
@@ -495,9 +491,7 @@ def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> Non
         file_path = tmp_dir / file_name
 
         sanitized_domains = {
-            sanitize_domain(d)
-            for d in domains
-            if is_valid_domain(sanitize_domain(d))
+            sanitize_domain(d) for d in domains if is_valid_domain(sanitize_domain(d))
         }
         unique_sorted_domains = sorted(sanitized_domains)
 
