@@ -29,7 +29,7 @@ gstatic.com
 amazonaws.com
 s3.amazonaws.com
 
-# Media Delivery
+# Media Distribution Infrastructure 
 brightcove.net
 cdn.vidible.tv
 delivery.vidible.tv
