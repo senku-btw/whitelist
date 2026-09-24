@@ -632,7 +632,7 @@ def run_sync_pipeline():
 
     # 3. Reload Engine Memory Cache
     reload_pihole_engine()
-    
+
     # 4. Synchronize with Git Repository
     git_sync(SCRIPT_DIR)
 
