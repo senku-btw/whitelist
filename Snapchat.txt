@@ -1,8 +1,0 @@
-aws-proxy-gcp.api.snapchat.com
-aws.api.snapchat.com
-aws.duplex.snapchat.com
-bolt-gcdn.sc-cdn.net
-cf-st.sc-cdn.net
-gcp.api.snapchat.com
-gcs.sc-cdn.net
-www.snapchat.com
