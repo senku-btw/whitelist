@@ -1,7 +1,0 @@
-api-tv.spotify.com
-apresolve.spotify.com
-audio-ake.spotify.com.edgesuite.net
-market.spotify.com
-mobile-ap.spotify.com
-spclient.wg.spotify.com
-upgrade.scdn.com
