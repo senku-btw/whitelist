@@ -47,3 +47,6 @@ voe.sx
 themoviedb.com
 thetvdb.com
 
+# On-Demand Podcasts
+pscrb.fm
+
