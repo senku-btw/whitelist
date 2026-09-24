@@ -25,7 +25,7 @@ res.cloudinary.com
 # Front‑End Delivery Networks
 gstatic.com
 
-# Infrastructure as a Service (IaaS)
+# Infrastructure As A Service (IaaS)
 amazonaws.com
 s3.amazonaws.com
 

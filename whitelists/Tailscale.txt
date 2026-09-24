@@ -1,0 +1,2 @@
+controlplane.tailscale.com
+pkgs.tailscale.com
