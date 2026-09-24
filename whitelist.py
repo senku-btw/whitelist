@@ -2,8 +2,10 @@
 Combined Autonomous Pi-hole Group Manager, Whitelist Pipeline, and Git Sync.
 
 Executes a unified pipeline:
-1. Migrates '#' comment domains from gravity.db into whitelist.txt.
-2. Rebuilds Pi-hole groups based on regular domain comments and maps domains/clients.
+1. Migrates '#' comment domains from gravity.db into whitelist.txt, preserving
+   category comment order while sorting domains within each category.
+2. Rebuilds Pi-hole groups based on regular domain comments (min 2 occurrences)
+   and maps domains/clients, ignoring default web query log entries.
 3. Extracts categorized whitelists from gravity.db into individual files under whitelists/.
 4. Reloads Pi-hole FTL and pushes all changes to Git.
 """
@@ -33,7 +35,12 @@ WHITELISTS_DIR = SCRIPT_DIR / "whitelists"
 # --- Group & Whitelist Rules ---
 SKIPPED_GROUPS = frozenset(["Hosts"])
 DEFAULT_GROUP = "Default"
+MIN_GROUP_OCCURRENCES = 2
 IMMUTABLE_CATEGORIES = frozenset(["hosts", "Facebook"])
+IGNORED_COMMENT_SUBSTRINGS = (
+    "added through the query log",
+    "added from query log",
+)
 
 CORRECTIONS = MappingProxyType(
     {
@@ -120,14 +127,25 @@ def is_valid_domain(domain: str) -> bool:
     return bool(pattern.match(domain))
 
 
+def is_ignored_comment(comment: str) -> bool:
+    """Checks if a comment matches default web interface patterns that should be skipped."""
+    if not comment:
+        return False
+    lowered = comment.strip().lower()
+    return any(sub in lowered for sub in IGNORED_COMMENT_SUBSTRINGS)
+
+
 # ==============================================================================
 # Part 1: Whitelist.txt and Group Management Operations
 # ==============================================================================
 
 
-def parse_whitelist_file() -> defaultdict:
-    """Parses whitelist.txt into a mapping of category comments to sets of domains."""
-    merged_data = defaultdict(set)
+def parse_whitelist_file() -> Dict[str, Set[str]]:
+    """
+    Parses whitelist.txt into a dict mapping category comments to sets of domains,
+    preserving the original order in which category headers appear.
+    """
+    merged_data: Dict[str, Set[str]] = {}
     current_comment = None
 
     if WHITELIST_TXT_PATH.exists():
@@ -138,17 +156,21 @@ def parse_whitelist_file() -> defaultdict:
                     continue
                 if line.startswith("#"):
                     current_comment = f"# {line.lstrip('#').strip()}"
-                elif current_comment and is_valid_domain(line):
-                    merged_data[current_comment].add(line)
+                    if current_comment not in merged_data:
+                        merged_data[current_comment] = set()
+                elif current_comment:
+                    sanitized = sanitize_domain(line)
+                    if is_valid_domain(sanitized):
+                        merged_data[current_comment].add(sanitized)
 
     return merged_data
 
 
 def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     """
-    Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt in
-    alphabetical order without duplicate domains, and returns the database IDs
-    of migrated domains for deletion.
+    Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt
+    preserving the original category header sequence while sorting and
+    deduplicating the domain links strictly under each category.
     """
     merged_data = parse_whitelist_file()
 
@@ -159,30 +181,36 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
 
     db_ids_to_delete = []
     for domain_id, domain, comment in cursor.fetchall():
-        clean_dom = domain.strip()
+        clean_dom = sanitize_domain(domain)
         clean_comment = f"# {comment.lstrip('#').strip()}"
 
         if is_valid_domain(clean_dom):
+            if clean_comment not in merged_data:
+                merged_data[clean_comment] = set()
             merged_data[clean_comment].add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
     seen_domains = set()
-    cleaned_whitelist = {}
+    cleaned_whitelist: Dict[str, List[str]] = {}
 
-    for comment in sorted(merged_data.keys()):
-        unique_domains = sorted(
-            [d for d in merged_data[comment] if d not in seen_domains]
+    # Maintain category header insertion order (do NOT sort merged_data.keys())
+    for comment in merged_data.keys():
+        # Sort ONLY the domains within this category container
+        valid_unique_domains = sorted(
+            [
+                d
+                for d in merged_data[comment]
+                if d not in seen_domains and is_valid_domain(d)
+            ]
         )
-        if unique_domains:
-            cleaned_whitelist[comment] = frozenset(unique_domains)
-            seen_domains.update(unique_domains)
-
-    immutable_whitelist = MappingProxyType(cleaned_whitelist)
+        if valid_unique_domains:
+            cleaned_whitelist[comment] = valid_unique_domains
+            seen_domains.update(valid_unique_domains)
 
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
-        for comment in sorted(immutable_whitelist.keys()):
+        for comment, domains in cleaned_whitelist.items():
             f.write(f"{comment}\n")
-            for domain in sorted(immutable_whitelist[comment]):
+            for domain in domains:
                 f.write(f"{domain}\n")
             f.write("\n")
 
@@ -224,7 +252,8 @@ def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
 def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
     Purges non-Default groups and mappings, recreates missing groups based on
-    active whitelist comments, and returns a mapping of group names to IDs.
+    whitelist comments that appear at least MIN_GROUP_OCCURRENCES times,
+    and returns a mapping of group names to IDs.
     """
     current_timestamp = int(time.time())
 
@@ -262,18 +291,25 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
     )
 
-    whitelisted_comments = set()
+    comment_counts = defaultdict(int)
     for row in cursor.fetchall():
-        if row[0].strip().startswith("#"):
+        raw_comment = row[0].strip()
+        if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
             continue
 
-        cleaned_comment = clean_to_title_case(row[0])
+        cleaned_comment = clean_to_title_case(raw_comment)
         if (
             cleaned_comment
             and cleaned_comment not in SKIPPED_GROUPS
             and cleaned_comment != DEFAULT_GROUP
         ):
-            whitelisted_comments.add(cleaned_comment)
+            comment_counts[cleaned_comment] += 1
+
+    whitelisted_comments = {
+        comment
+        for comment, count in comment_counts.items()
+        if count >= MIN_GROUP_OCCURRENCES
+    }
 
     group_dict = {DEFAULT_GROUP: default_group_id}
 
@@ -296,13 +332,16 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             if cleaned_name:
                 group_dict[cleaned_name] = group_id
 
-        print(f"Successfully recreated {len(whitelisted_comments)} group(s).")
+        print(
+            f"Successfully recreated {len(whitelisted_comments)} group(s) "
+            f"(met threshold of {MIN_GROUP_OCCURRENCES}+ occurrences)."
+        )
 
     return group_dict
 
 
 def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
-    """Maps domains exclusively to their corresponding groups based on whitelist comments."""
+    """Maps domains to corresponding groups based on whitelist comments."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
@@ -310,16 +349,22 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
 
     domains_to_clear = []
     mapping_inserts = []
+    default_group_id = group_dict[DEFAULT_GROUP]
 
     for domain_id, comment in cursor.fetchall():
-        if comment.strip().startswith("#"):
+        raw_comment = comment.strip()
+        if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
             continue
 
-        cleaned_comment = clean_to_title_case(comment)
+        cleaned_comment = clean_to_title_case(raw_comment)
+        domains_to_clear.append((domain_id,))
+
         if cleaned_comment and cleaned_comment in group_dict:
             group_id = group_dict[cleaned_comment]
-            domains_to_clear.append((domain_id,))
             mapping_inserts.append((domain_id, group_id))
+        else:
+            # Fall back to Default group if comment didn't meet creation threshold
+            mapping_inserts.append((domain_id, default_group_id))
 
     if domains_to_clear:
         cursor.executemany(
@@ -335,7 +380,7 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
         )
         print(
             f"Successfully linked {len(mapping_inserts)} whitelist domain(s) "
-            "exclusively to their corresponding groups."
+            "to their corresponding groups."
         )
 
 
@@ -377,7 +422,7 @@ def restore_client_mappings(
 
 
 def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
-    """Reads exact whitelists (type = 0) from gravity.db grouped by comment."""
+    """Reads exact whitelists (type = 0) from gravity.db grouped by clean comment."""
     if not db_path.is_file():
         return {}
 
@@ -394,16 +439,24 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
                 comment = row[1] if row[1] is not None else ""
                 category_name = comment.strip()
 
-                if not category_name or category_name.startswith("#"):
+                if (
+                    not category_name
+                    or category_name.startswith("#")
+                    or is_ignored_comment(category_name)
+                ):
                     continue
 
                 cleaned_domain = sanitize_domain(raw_domain)
-                if not cleaned_domain:
+                if not cleaned_domain or not is_valid_domain(cleaned_domain):
                     continue
 
-                if category_name not in categories:
-                    categories[category_name] = set()
-                categories[category_name].add(cleaned_domain)
+                cleaned_category = clean_to_title_case(category_name)
+                if not cleaned_category:
+                    continue
+
+                if cleaned_category not in categories:
+                    categories[cleaned_category] = set()
+                categories[cleaned_category].add(cleaned_domain)
 
     except sqlite3.Error as e:
         print(f"Error reading gravity.db for file extraction: {e}")
@@ -428,8 +481,8 @@ def _merge_existing_immutables(
         try:
             with file_path.open("r", encoding="utf-8") as f:
                 for line in f:
-                    clean_line = line.strip()
-                    if clean_line:
+                    clean_line = sanitize_domain(line)
+                    if is_valid_domain(clean_line):
                         categories[category].add(clean_line)
         except OSError:
             pass
@@ -440,10 +493,19 @@ def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> Non
     for comment, domains in categories.items():
         file_name = f"{sanitize_filename(comment)}.txt"
         file_path = tmp_dir / file_name
-        unique_domains = sorted(frozenset(domains))
+
+        sanitized_domains = {
+            sanitize_domain(d)
+            for d in domains
+            if is_valid_domain(sanitize_domain(d))
+        }
+        unique_sorted_domains = sorted(sanitized_domains)
+
+        if not unique_sorted_domains:
+            continue
 
         with file_path.open("w", encoding="utf-8", newline="\n") as f:
-            for domain in unique_domains:
+            for domain in unique_sorted_domains:
                 f.write(f"{domain}\n")
 
 
