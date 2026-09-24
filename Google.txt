@@ -17,5 +17,4 @@ www.googleapis.com
 appspot-preview.l.google.com
 lh3.googleusercontent.com
 fonts.gstatic.com
-
 clients6.google.com
