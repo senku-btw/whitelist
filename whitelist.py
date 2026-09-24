@@ -193,13 +193,13 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     seen_domains = set()
     cleaned_whitelist: Dict[str, List[str]] = {}
 
-    # Maintain category header insertion order (do NOT sort merged_data.keys())
-    for comment in merged_data.keys():
+    # Iterate items directly to preserve category order and satisfy pylint
+    for comment, domains in merged_data.items():
         # Sort ONLY the domains within this category container
         valid_unique_domains = sorted(
             [
                 d
-                for d in merged_data[comment]
+                for d in domains
                 if d not in seen_domains and is_valid_domain(d)
             ]
         )
