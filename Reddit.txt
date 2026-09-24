@@ -1,9 +1,0 @@
-b.thumbs.redditmedia.com
-cdn.embedly.com
-reddit-uploaded-media.s3-accelerate.amazonaws.com
-reddit.com
-reddit.map.fastly.net
-redditstatic.com
-styles.redditmedia.com
-www.reddit.com
-www.redditmedia.com
