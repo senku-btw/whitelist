@@ -209,6 +209,16 @@ def parse_whitelist_file() -> Dict[str, Set[str]]:
     return merged_data
 
 
+def _write_whitelist_file(cleaned_whitelist: Dict[str, List[str]]) -> None:
+    """Helper to write formatted whitelist categories and domains to whitelist.txt."""
+    with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
+        for cat_comment, doms in cleaned_whitelist.items():
+            f.write(f"{cat_comment}\n")
+            for dom in doms:
+                f.write(f"{dom}\n")
+            f.write("\n")
+
+
 def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     """
     Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt
@@ -225,30 +235,19 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     db_ids_to_delete = []
     for domain_id, domain, comment in cursor.fetchall():
         clean_dom = sanitize_domain(domain)
-        raw_comment = comment.lstrip("#").strip()
-
         if is_valid_domain(clean_dom):
-            for cat in split_comment_into_groups(raw_comment):
+            for cat in split_comment_into_groups(comment.lstrip("#").strip()):
                 clean_cmt = f"# {clean_to_title_case(cat)}"
-                if clean_cmt not in merged_data:
-                    merged_data[clean_cmt] = set()
-                merged_data[clean_cmt].add(clean_dom)
+                merged_data.setdefault(clean_cmt, set()).add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
-    cleaned_whitelist: Dict[str, List[str]] = {}
+    cleaned_whitelist = {
+        cat: sorted([d for d in doms if is_valid_domain(d)])
+        for cat, doms in merged_data.items()
+        if any(is_valid_domain(d) for d in doms)
+    }
 
-    for cat_comment, domains in merged_data.items():
-        valid_unique = sorted([d for d in domains if is_valid_domain(d)])
-        if valid_unique:
-            cleaned_whitelist[cat_comment] = valid_unique
-
-    with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
-        for cat_comment, doms in cleaned_whitelist.items():
-            f.write(f"{cat_comment}\n")
-            for dom in doms:
-                f.write(f"{dom}\n")
-            f.write("\n")
-
+    _write_whitelist_file(cleaned_whitelist)
     return db_ids_to_delete
 
 
