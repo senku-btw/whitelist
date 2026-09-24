@@ -1,5 +1,6 @@
 0.client-channel.google.com
 2.android.pool.ntp.org
+accounts.google.com
 android.clients.google.com
 appspot-preview.l.google.com
 clients1.google.com
@@ -17,4 +18,5 @@ googleapis.com
 instantmessaging-pa.googleapis.com
 lh3.googleusercontent.com
 oauthaccountmanager.googleapis.com
+www.google.com
 www.googleapis.com
