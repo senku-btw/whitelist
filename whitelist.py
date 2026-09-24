@@ -190,7 +190,7 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
             merged_data[clean_comment].add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
-    seen_domains = set()
+    seen_domains: Set[str] = set()
     cleaned_whitelist: Dict[str, List[str]] = {}
 
     # Iterate items directly to preserve category order and satisfy pylint
