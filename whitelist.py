@@ -619,7 +619,7 @@ def run_sync_pipeline():
         conn.commit()
         print("Database transaction committed successfully.")
 
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-exception-caught
         conn.rollback()
         print(f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}")
         sys.exit(1)
@@ -635,7 +635,6 @@ def run_sync_pipeline():
 
     # 4. Synchronize with Git Repository
     git_sync(SCRIPT_DIR)
-
 
 def main():
     """Main entry point enforcing single-instance execution via lockfile."""
