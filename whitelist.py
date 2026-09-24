@@ -53,6 +53,7 @@ GIT_TIMEOUT_SECONDS = 30
 # Helper Utilities & Sanitization
 # ==============================================================================
 
+
 def generate_mixed_hex_comment(length: int = 7) -> str:
     """Generates a random hex string containing both digits and letters (a-f)."""
     while True:
@@ -122,6 +123,7 @@ def is_valid_domain(domain: str) -> bool:
 # ==============================================================================
 # Part 1: Whitelist.txt and Group Management Operations
 # ==============================================================================
+
 
 def parse_whitelist_file() -> defaultdict:
     """Parses whitelist.txt into a mapping of category comments to sets of domains."""
@@ -373,6 +375,7 @@ def restore_client_mappings(
 # Part 2: Categorized Whitelist File Extraction
 # ==============================================================================
 
+
 def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
     """Reads exact whitelists (type = 0) from gravity.db grouped by comment."""
     if not db_path.is_file():
@@ -463,7 +466,9 @@ def write_whitelists_atomically(
             target_dir.rename(backup_dir)
 
         tmp_dir.rename(target_dir)
-        print(f"Successfully updated individual whitelist files in '{target_dir.name}/'.")
+        print(
+            f"Successfully updated individual whitelist files in '{target_dir.name}/'."
+        )
 
     except OSError as e:
         print(f"Failed atomic write for category files: {e}")
@@ -480,6 +485,7 @@ def write_whitelists_atomically(
 # ==============================================================================
 # Part 3: Engine Reload & Git Synchronization
 # ==============================================================================
+
 
 def reload_pihole_engine():
     """Forces a full restart/refresh of Pi-hole FTL engine to reload memory cache."""
@@ -584,7 +590,9 @@ def git_sync(repo_dir: Path) -> None:
         print(f"Successfully pushed all changes to Git [commit: {commit_hex}].")
 
     except subprocess.TimeoutExpired as e:
-        print(f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}")
+        print(
+            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}"
+        )
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
         print(f"ERROR: Git operation failed: {' '.join(e.cmd)}\nDetails: {err_msg}")
@@ -593,6 +601,7 @@ def git_sync(repo_dir: Path) -> None:
 # ==============================================================================
 # Core Pipeline Execution & Main Entry Point
 # ==============================================================================
+
 
 def run_sync_pipeline():
     """Executes the full combined pipeline."""
@@ -621,7 +630,9 @@ def run_sync_pipeline():
 
     except Exception as e:  # pylint: disable=broad-exception-caught
         conn.rollback()
-        print(f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}")
+        print(
+            f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}"
+        )
         sys.exit(1)
     finally:
         conn.close()
