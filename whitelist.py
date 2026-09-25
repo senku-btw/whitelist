@@ -453,16 +453,17 @@ def restore_client_mappings(
 
 
 # ==============================================================================
-# Part 2: Categorized Whitelist File Extraction
+# Part 2: Categorized Whitelist File Extraction (Adapted for Subcategories)
 # ==============================================================================
 
 
-def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
-    """Reads exact whitelists (type = 0) from gravity.db grouped by clean comment."""
+def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
+    """Reads whitelists (type = 0) grouped by category and optional bracketed subcategories."""
     if not db_path.is_file():
         return {}
 
-    categories: Dict[str, Set[str]] = {}
+    # Structure: categories[Main_Category][Sub_Category] = {domains...}
+    categories: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
     uri = f"file:{db_path.resolve()}?mode=ro"
 
     try:
@@ -487,13 +488,19 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
                     continue
 
                 for cat in split_comment_into_groups(category_name):
-                    cleaned_category = clean_to_title_case(cat)
-                    if not cleaned_category:
+                    # Extract bracketed subcategories (matches both [] and {})
+                    match = re.search(r'^(.*?)\s*[\[\{](.*?)[\]\}]\s*$', cat)
+                    if match:
+                        main_cat = clean_to_title_case(match.group(1))
+                        sub_cat = clean_to_title_case(match.group(2))
+                    else:
+                        main_cat = clean_to_title_case(cat)
+                        sub_cat = ""
+
+                    if not main_cat:
                         continue
 
-                    if cleaned_category not in categories:
-                        categories[cleaned_category] = set()
-                    categories[cleaned_category].add(cleaned_domain)
+                    categories[main_cat][sub_cat].add(cleaned_domain)
 
     except sqlite3.Error as e:
         print(f"Error reading gravity.db for file extraction: {e}")
@@ -502,7 +509,7 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Set[str]]:
 
 
 def _merge_existing_immutables(
-    target_dir: Path, categories: Dict[str, Set[str]]
+    target_dir: Path, categories: Dict[str, Dict[str, Set[str]]]
 ) -> None:
     """Ensures specified categories are append-only by merging existing directory files."""
     for category in IMMUTABLE_CATEGORIES:
@@ -512,40 +519,62 @@ def _merge_existing_immutables(
         if not file_path.is_file():
             continue
 
-        if category not in categories:
-            categories[category] = set()
-
         try:
             with file_path.open("r", encoding="utf-8") as f:
+                current_sub = ""
                 for line in f:
+                    line = line.strip()
+                    if line.startswith("#"):
+                        current_sub = line.lstrip("#").strip()
+                        continue
+                    
                     clean_line = sanitize_domain(line)
                     if is_valid_domain(clean_line):
-                        categories[category].add(clean_line)
+                        categories[category][current_sub].add(clean_line)
         except OSError:
             pass
 
 
-def _write_category_files(categories: Dict[str, Set[str]], tmp_dir: Path) -> None:
-    """Writes categorized domains to individual text files in a temporary directory."""
-    for comment, domains in categories.items():
-        file_name = f"{sanitize_filename(comment)}.txt"
+def _write_category_files(categories: Dict[str, Dict[str, Set[str]]], tmp_dir: Path) -> None:
+    """Writes categorized domains and their subcategories to individual text files."""
+    for category, subcategories in categories.items():
+        file_name = f"{sanitize_filename(category)}.txt"
         file_path = tmp_dir / file_name
 
-        sanitized_domains = {
-            sanitize_domain(d) for d in domains if is_valid_domain(sanitize_domain(d))
-        }
-        unique_sorted_domains = sorted(sanitized_domains)
-
-        if not unique_sorted_domains:
+        # Check if the category has any valid domains across all subcategories
+        has_domains = any(
+            is_valid_domain(sanitize_domain(d))
+            for doms in subcategories.values()
+            for d in doms
+        )
+        if not has_domains:
             continue
 
         with file_path.open("w", encoding="utf-8", newline="\n") as f:
-            for domain in unique_sorted_domains:
-                f.write(f"{domain}\n")
+            # 1. Base group domains (no subcategory comment)
+            if "" in subcategories:
+                base_domains = sorted(
+                    {sanitize_domain(d) for d in subcategories[""] if is_valid_domain(sanitize_domain(d))}
+                )
+                for domain in base_domains:
+                    f.write(f"{domain}\n")
+                if base_domains and len(subcategories) > 1:
+                    f.write("\n")
+
+            # 2. Subcategories (alphabetized)
+            for subcat in sorted(k for k in subcategories.keys() if k):
+                subcat_domains = sorted(
+                    {sanitize_domain(d) for d in subcategories[subcat] if is_valid_domain(sanitize_domain(d))}
+                )
+                if subcat_domains:
+                    f.write(f"# {subcat}\n")
+                    for domain in subcat_domains:
+                        f.write(f"{domain}\n")
+                    f.write("\n")
 
 
 def write_whitelists_atomically(
-    categories: Dict[str, Set[str]], target_dir: Path
+    categories: Dict[str, Dict[str, Set[str]]], target_dir: Path
 ) -> None:
     """Atomically swaps directory contents with freshly exported category text files."""
     target_dir.parent.mkdir(parents=True, exist_ok=True)
