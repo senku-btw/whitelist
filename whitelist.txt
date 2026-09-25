@@ -89,7 +89,7 @@ gitlab.io
 gitter.im
 raw.githubusercontent.com
 
-# hosts
+# Hosts
 adaway.org
 adblock.dk
 blocklist.kowabit.de

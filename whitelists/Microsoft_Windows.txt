@@ -21,12 +21,10 @@ outlook.office365.com
 products.office.com
 
 # Windows Store
+displaycatalog.mp.microsoft.com
 dl.delivery.mp.microsoft.com
 fe3.delivery.dsp.mp.microsoft.com.nsatc.net
 geo-prod.do.dsp.mp.microsoft.com
 sls.update.microsoft.com.akadns.net
 tlu.dl.delivery.mp.microsoft.com
-
-# Windows Store.Windows Updates
-displaycatalog.mp.microsoft.com
 
