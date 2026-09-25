@@ -127,3 +127,14 @@ cms.souqcdn.com
 api.directory.signal.org
 contentproxy.signal.org
 turn1.whispersystems.org
+
+URL Shorteners
+adf.ly
+www.adf.ly
+bit.ly
+www.bit.ly
+goo.gl
+ow.ly
+www.ow.ly
+amzn.to
+amzn.com
