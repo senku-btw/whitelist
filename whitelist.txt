@@ -97,6 +97,7 @@ dbl.oisd.nl
 easylist-downloads.adblockplus.org
 easylist.to
 hosts-file.net
+hostsfile.mine.nu
 hostsfile.org
 iplists.firehol.org
 pgl.yoyo.org
@@ -105,3 +106,7 @@ ransomwaretracker.abuse.ch
 road.adblock.ro
 someonewhocares.org
 sysctl.org
+v.firebog.net
+winhelp2002.mvps.org
+zeustracker.abuse.ch
+
