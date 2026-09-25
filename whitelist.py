@@ -130,18 +130,20 @@ def split_comment_into_groups(comment: str) -> List[str]:
     """
     Splits a comment string into individual group names when separated by delimiters
     like '/', ',', ';', ' & ', or ' and ' (e.g. 'Microsoft Windows/Spotify'),
-    while preserving multi-word group names and text inside parentheses.
+    while preserving multi-word group names and text inside parentheses or curly brackets.
     """
     if not comment:
         return []
 
-    # Isolate parenthetical blocks so delimiters inside parentheses aren't split
-    parts = re.split(r"(\([^\)]*\))", comment)
+    # Isolate parenthetical and curly bracket blocks so delimiters inside aren't split
+    parts = re.split(r"(\([^\)]*\)|\{[^\}]*\})", comment)
     delim_pattern = re.compile(r"\s*(?:/|,|;|\s+&\s+|\s+and\s+)\s*", re.IGNORECASE)
 
     groups = [""]
     for part in parts:
-        if part.startswith("(") and part.endswith(")"):
+        if (part.startswith("(") and part.endswith(")")) or (
+            part.startswith("{") and part.endswith("}")
+        ):
             groups[-1] += part
         else:
             subparts = delim_pattern.split(part)
@@ -458,7 +460,7 @@ def restore_client_mappings(
 
 
 def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
-    """Reads whitelists (type = 0) grouped by category and optional bracketed subcategories."""
+    """Reads whitelists (type = 0) grouped by category and optional curly bracketed subcategories."""
     if not db_path.is_file():
         return {}
 
@@ -488,19 +490,28 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
                     continue
 
                 for cat in split_comment_into_groups(category_name):
-                    # Extract bracketed subcategories (matches both [] and {})
-                    match = re.search(r"^(.*?)\s*[\[\{](.*?)[\]\}]\s*$", cat)
+                    # Extract curly-bracketed subcategories e.g., Category { Subcategory 1, Subcategory 2 }
+                    match = re.search(r"^(.*?)\s*\{([^}]*)\}\s*$", cat)
                     if match:
                         main_cat = clean_to_title_case(match.group(1))
-                        sub_cat = clean_to_title_case(match.group(2))
+                        raw_subcats = match.group(2).strip()
+                        if raw_subcats:
+                            sub_cats = [
+                                clean_to_title_case(s)
+                                for s in re.split(r"\s*,\s*", raw_subcats)
+                                if s.strip()
+                            ]
+                        else:
+                            sub_cats = [""]
                     else:
                         main_cat = clean_to_title_case(cat)
-                        sub_cat = ""
+                        sub_cats = [""]
 
                     if not main_cat:
                         continue
 
-                    categories[main_cat][sub_cat].add(cleaned_domain)
+                    for sub_cat in sub_cats:
+                        categories[main_cat][sub_cat].add(cleaned_domain)
 
     except sqlite3.Error as e:
         print(f"Error reading gravity.db for file extraction: {e}")
