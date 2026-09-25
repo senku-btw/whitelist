@@ -80,3 +80,14 @@ thetvdb.com
 podcast.darknetdiaries.com
 pscrb.fm
 
+# Version Control Systems (VCS)
+github.com
+
+# # Version Control Systems (VCS)
+github.io
+githubusercontent.com
+gitlab.com
+gitlab.io
+gitter.im
+raw.githubusercontent.com
+
