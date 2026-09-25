@@ -527,7 +527,7 @@ def _merge_existing_immutables(
                     if line.startswith("#"):
                         current_sub = line.lstrip("#").strip()
                         continue
-                    
+
                     clean_line = sanitize_domain(line)
                     if is_valid_domain(clean_line):
                         categories[category][current_sub].add(clean_line)
@@ -553,9 +553,13 @@ def _write_category_files(categories: Dict[str, Dict[str, Set[str]]], tmp_dir: P
         with file_path.open("w", encoding="utf-8", newline="\n") as f:
             # 1. Base group domains (no subcategory comment)
             if "" in subcategories:
-                base_domains = sorted(
-                    {sanitize_domain(d) for d in subcategories[""] if is_valid_domain(sanitize_domain(d))}
-                )
+                sanitized_base_set = {
+                    sanitize_domain(d)
+                    for d in subcategories[""]
+                    if is_valid_domain(sanitize_domain(d))
+                }
+                base_domains = sorted(sanitized_base_set)
+                
                 for domain in base_domains:
                     f.write(f"{domain}\n")
                 if base_domains and len(subcategories) > 1:
@@ -563,9 +567,13 @@ def _write_category_files(categories: Dict[str, Dict[str, Set[str]]], tmp_dir: P
 
             # 2. Subcategories (alphabetized)
             for subcat in sorted(k for k in subcategories.keys() if k):
-                subcat_domains = sorted(
-                    {sanitize_domain(d) for d in subcategories[subcat] if is_valid_domain(sanitize_domain(d))}
-                )
+                sanitized_subcat_set = {
+                    sanitize_domain(d)
+                    for d in subcategories[subcat]
+                    if is_valid_domain(sanitize_domain(d))
+                }
+                subcat_domains = sorted(sanitized_subcat_set)
+                
                 if subcat_domains:
                     f.write(f"# {subcat}\n")
                     for domain in subcat_domains:
