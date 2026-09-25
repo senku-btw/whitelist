@@ -444,6 +444,36 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
             "to their corresponding groups."
         )
 
+def restore_client_mappings(
+    cursor: sqlite3.Cursor,
+    client_backup: Dict[int, List[str]],
+    group_dict: Dict[str, int],
+):
+    """Re-links clients to Default group and any newly recreated matching groups."""
+    default_group_id = group_dict[DEFAULT_GROUP]
+    mapping_inserts = set()
+
+    cursor.execute("SELECT id FROM client")
+    for (client_id,) in cursor.fetchall():
+        mapping_inserts.add((client_id, default_group_id))
+
+    for client_id, group_names in client_backup.items():
+        for group_name in group_names:
+            cleaned_name = clean_to_title_case(group_name)
+            if cleaned_name in group_dict and cleaned_name != DEFAULT_GROUP:
+                mapping_inserts.add((client_id, group_dict[cleaned_name]))
+
+    if mapping_inserts:
+        cursor.executemany(
+            "INSERT OR IGNORE INTO client_by_group (client_id, group_id) "
+            "VALUES (?, ?)",
+            list(mapping_inserts),
+        )
+        unique_clients = len(set(c[0] for c in mapping_inserts))
+        print(
+            "Restored saved configurations and enforced Default fallback "
+            f"for {unique_clients} client(s)."
+        )
 
 # ==============================================================================
 # Part 2: Categorized Whitelist File Extraction
