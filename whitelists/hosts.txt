@@ -1,9 +1,0 @@
-hosts-file.net
-hostsfile.mine.nu
-hostsfile.org
-pgl.yoyo.org
-someonewhocares.org
-sysctl.org
-v.firebog.net
-winhelp2002.mvps.org
-zeustracker.abuse.ch
