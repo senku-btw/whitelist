@@ -27,9 +27,7 @@ from typing import Dict, List, Set, Tuple
 
 # --- Path Configurations ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
-DB_PATH = Path(
-    "/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db"
-)
+DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
 LOCK_FILE_PATH = Path("/tmp/pihole_group_sync.lock")
 WHITELIST_TXT_PATH = SCRIPT_DIR / "whitelist.txt"
 WHITELISTS_DIR = SCRIPT_DIR / "whitelists"
@@ -190,9 +188,7 @@ def _parse_category_comment(cat: str) -> Tuple[str, str]:
         return main_cat, ""
 
     parsed_subs = [
-        clean_to_title_case(s)
-        for s in re.split(r"\s*,\s*", raw_subcats)
-        if s.strip()
+        clean_to_title_case(s) for s in re.split(r"\s*,\s*", raw_subcats) if s.strip()
     ]
     sub_cat = parsed_subs[0] if parsed_subs else ""
     return main_cat, sub_cat
@@ -484,9 +480,7 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
     if not db_path.is_file():
         return {}
 
-    categories: Dict[str, Dict[str, Set[str]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
+    categories: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
     uri = f"file:{db_path.resolve()}?mode=ro"
 
     try:
@@ -739,10 +733,7 @@ def git_sync(repo_dir: Path) -> None:
         )
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
-        print(
-            f"ERROR: Git operation failed: {' '.join(e.cmd)}\n"
-            f"Details: {err_msg}"
-        )
+        print(f"ERROR: Git operation failed: {' '.join(e.cmd)}\n" f"Details: {err_msg}")
 
 
 # ==============================================================================
