@@ -189,11 +189,11 @@ def _parse_category_comment(cat: str) -> Tuple[str, str]:
 
     # Strip whitespace without applying title case logic
     parsed_subs = [s.strip() for s in re.split(r"\s*,\s*", raw_subcats) if s.strip()]
-    
+
     # Isolate the first subcategory
     sub_cat = parsed_subs[0] if parsed_subs else ""
 
-    # Reassign exact 'CDN' matches 
+    # Reassign exact 'CDN' matches
     if sub_cat == "CDN":
         sub_cat = "Content Delivery Networks (CDNs)"
 
