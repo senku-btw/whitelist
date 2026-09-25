@@ -3,6 +3,9 @@ ctldl.windowsupdate.com
 msedge.api.cdp.microsoft.com
 officeclient.microsoft.com
 
+# Bitlocker
+g.live.com
+
 # Connectivity Check
 dns.msftncsi.com
 ipv6.msftncsi.com
