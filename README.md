@@ -13,5 +13,3 @@
 - [ ] https://github.com/TheSmashy/O365Whitlist/tree/main
 - [x] https://gist.github.com/alex-messer/7c8426a6d701ca494e54ded31da45707
 - [x] https://github.com/deathbybandaid/pihole-whitelists
-
-pihole --white-regex [a-z]\.thumbs\.redditmedia\.com
