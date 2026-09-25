@@ -106,12 +106,17 @@ displaycatalog.mp.microsoft.com
 
 Apple
 
+www.apple.com
 apple.com
 icloud.com
 appleid.apple.com
 gsp1.apple.com
 ocsp.apple.com
 captive.apple.com
+gsp-ssl.ls.apple.com
+gsp-ssl.ls-apple.com.akadns.net
+gsp1.apple.com
+www.appleiphonecell.com
 
 Apple {iTunes}
 
@@ -126,6 +131,15 @@ fbcdn.net
 fbsbx.com
 fbcdn.com
 messenger.com
+
+Facebook Messenger
+
+edge-mqtt.facebook.com
+mqtt.c10r.facebook.com
+star.c10r.facebook.com
+star-mini.c10r.facebook.com
+edge-chat.facebook.com
+edge-chat.messenger.com
 
 Reddit
 
