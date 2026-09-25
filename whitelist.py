@@ -261,7 +261,8 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
         clean_dom = sanitize_domain(domain)
         if is_valid_domain(clean_dom):
             for cat in split_comment_into_groups(comment.lstrip("#").strip()):
-                clean_cmt = f"# {clean_to_title_case(cat)}"
+                cleaned_comment, _ = _parse_category_comment(cat)
+                clean_cmt = f"# {cleaned_comment}"
                 merged_data.setdefault(clean_cmt, set()).add(clean_dom)
             db_ids_to_delete.append(domain_id)
 
@@ -354,7 +355,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             continue
 
         for cat in split_comment_into_groups(raw_comment):
-            cleaned_comment = clean_to_title_case(cat)
+            cleaned_comment, _ = _parse_category_comment(cat)
             if (
                 cleaned_comment
                 and cleaned_comment not in SKIPPED_GROUPS
