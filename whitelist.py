@@ -23,11 +23,13 @@ import unicodedata
 from collections import defaultdict
 from pathlib import Path
 from types import MappingProxyType
-from typing import Dict, List, Set
+from typing import Dict, List, Set, Tuple
 
 # --- Path Configurations ---
 SCRIPT_DIR = Path(__file__).parent.resolve()
-DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
+DB_PATH = Path(
+    "/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db"
+)
 LOCK_FILE_PATH = Path("/tmp/pihole_group_sync.lock")
 WHITELIST_TXT_PATH = SCRIPT_DIR / "whitelist.txt"
 WHITELISTS_DIR = SCRIPT_DIR / "whitelists"
@@ -111,7 +113,6 @@ def clean_to_title_case(text: str) -> str:
     if not clean:
         return ""
 
-    # Split string by parenthetical sections: e.g. "category (VSCs)" -> ["category ", "(VSCs)", ""]
     parts = re.split(r"(\([^\)]*\))", clean)
     processed = []
     for part in parts:
@@ -135,7 +136,6 @@ def split_comment_into_groups(comment: str) -> List[str]:
     if not comment:
         return []
 
-    # Isolate parenthetical and curly bracket blocks so delimiters inside aren't split
     parts = re.split(r"(\([^\)]*\)|\{[^\}]*\})", comment)
     delim_pattern = re.compile(r"\s*(?:/|,|;|\s+&\s+|\s+and\s+)\s*", re.IGNORECASE)
 
@@ -176,6 +176,26 @@ def is_ignored_comment(comment: str) -> bool:
         return False
     lowered = comment.strip().lower()
     return any(sub in lowered for sub in IGNORED_COMMENT_SUBSTRINGS)
+
+
+def _parse_category_comment(cat: str) -> Tuple[str, str]:
+    """Extracts main category and first subcategory from a comment string."""
+    match = re.search(r"^(.*?)\s*\{([^}]*)\}\s*$", cat)
+    if not match:
+        return clean_to_title_case(cat), ""
+
+    main_cat = clean_to_title_case(match.group(1))
+    raw_subcats = match.group(2).strip()
+    if not raw_subcats:
+        return main_cat, ""
+
+    parsed_subs = [
+        clean_to_title_case(s)
+        for s in re.split(r"\s*,\s*", raw_subcats)
+        if s.strip()
+    ]
+    sub_cat = parsed_subs[0] if parsed_subs else ""
+    return main_cat, sub_cat
 
 
 # ==============================================================================
@@ -455,17 +475,18 @@ def restore_client_mappings(
 
 
 # ==============================================================================
-# Part 2: Categorized Whitelist File Extraction (Adapted for Subcategories)
+# Part 2: Categorized Whitelist File Extraction
 # ==============================================================================
 
 
 def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
-    """Reads whitelists (type = 0) grouped by category and optional curly bracketed subcategories."""
+    """Reads whitelists (type = 0) grouped by category and subcategories."""
     if not db_path.is_file():
         return {}
 
-    # Structure: categories[Main_Category][Sub_Category] = {domains...}
-    categories: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
+    categories: Dict[str, Dict[str, Set[str]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
     uri = f"file:{db_path.resolve()}?mode=ro"
 
     try:
@@ -474,8 +495,8 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
             cursor.execute("SELECT domain, comment FROM domainlist WHERE type = 0")
 
             for row in cursor.fetchall():
-                raw_domain = row[0] if row[0] is not None else ""
-                comment = row[1] if row[1] is not None else ""
+                raw_domain = row[0] or ""
+                comment = row[1] or ""
                 category_name = comment.strip()
 
                 if (
@@ -490,28 +511,9 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
                     continue
 
                 for cat in split_comment_into_groups(category_name):
-                    # Extract curly-bracketed subcategories e.g., Category { Subcategory 1, Subcategory 2 }
-                    match = re.search(r"^(.*?)\s*\{([^}]*)\}\s*$", cat)
-                    if match:
-                        main_cat = clean_to_title_case(match.group(1))
-                        raw_subcats = match.group(2).strip()
-                        sub_cat = ""
-                        if raw_subcats:
-                            parsed_subs = [
-                                clean_to_title_case(s)
-                                for s in re.split(r"\s*,\s*", raw_subcats)
-                                if s.strip()
-                            ]
-                            if parsed_subs:
-                                sub_cat = parsed_subs[0]
-                    else:
-                        main_cat = clean_to_title_case(cat)
-                        sub_cat = ""
-
-                    if not main_cat:
-                        continue
-
-                    categories[main_cat][sub_cat].add(cleaned_domain)
+                    main_cat, sub_cat = _parse_category_comment(cat)
+                    if main_cat:
+                        categories[main_cat][sub_cat].add(cleaned_domain)
 
     except sqlite3.Error as e:
         print(f"Error reading gravity.db for file extraction: {e}")
@@ -554,7 +556,6 @@ def _write_category_files(
         file_name = f"{sanitize_filename(category)}.txt"
         file_path = tmp_dir / file_name
 
-        # Check if the category has any valid domains across all subcategories
         has_domains = any(
             is_valid_domain(sanitize_domain(d))
             for doms in subcategories.values()
@@ -564,7 +565,6 @@ def _write_category_files(
             continue
 
         with file_path.open("w", encoding="utf-8", newline="\n") as f:
-            # 1. Base group domains (no subcategory comment)
             if "" in subcategories:
                 sanitized_base_set = {
                     sanitize_domain(d)
@@ -578,7 +578,6 @@ def _write_category_files(
                 if base_domains and len(subcategories) > 1:
                     f.write("\n")
 
-            # 2. Subcategories (alphabetized)
             for subcat in sorted(k for k in subcategories.keys() if k):
                 sanitized_subcat_set = {
                     sanitize_domain(d)
@@ -735,11 +734,15 @@ def git_sync(repo_dir: Path) -> None:
 
     except subprocess.TimeoutExpired as e:
         print(
-            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: {' '.join(e.cmd)}"
+            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: "
+            f"{' '.join(e.cmd)}"
         )
     except subprocess.CalledProcessError as e:
         err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
-        print(f"ERROR: Git operation failed: {' '.join(e.cmd)}\nDetails: {err_msg}")
+        print(
+            f"ERROR: Git operation failed: {' '.join(e.cmd)}\n"
+            f"Details: {err_msg}"
+        )
 
 
 # ==============================================================================
