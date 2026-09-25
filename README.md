@@ -8,7 +8,7 @@
 - [ ] https://github.com/rahilpathan/pihole-whitelist/tree/main
 - [x] https://github.com/TJohnson93/PiHoleWhiteLists
 - [x] https://discourse.pi-hole.net/t/commonly-whitelisted-domains/212
-- [ ] https://github.com/Soundium/Pi_hole_Whitelist
+- [x] https://github.com/Soundium/Pi_hole_Whitelist
 - [ ] https://github.com/bahree/pihole-lists/blob/main/whitelist.txt
 - [ ] https://gist.github.com/wjervis7/9f5f2abaf0822ccf317d3d8ed32d95a0
 - [ ] https://github.com/TheSmashy/O365Whitlist/tree/main
