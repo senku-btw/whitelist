@@ -82,8 +82,6 @@ pscrb.fm
 
 # Version Control Systems (VCS)
 github.com
-
-# # Version Control Systems (VCS)
 github.io
 githubusercontent.com
 gitlab.com
