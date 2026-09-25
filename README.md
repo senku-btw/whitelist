@@ -26,6 +26,19 @@ www.googleapis.com
 youtubei.googleapis.com
 oauthaccountmanager.googleapis.com
 
+YouTube {}
+
+redirector.googlevideo.com
+youtube-ui.l.google.com
+tv.youtube.com
+s2.youtube.com
+s2.youtube.com
+www.youtube.com
+www.youtube-nocookie.com
+youtube.googleapis.com
+youtube-nocookie.com
+
+
 Google [Google Play Store]
 
 android.clients.google.com
