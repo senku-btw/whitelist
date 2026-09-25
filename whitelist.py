@@ -489,7 +489,7 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
 
                 for cat in split_comment_into_groups(category_name):
                     # Extract bracketed subcategories (matches both [] and {})
-                    match = re.search(r'^(.*?)\s*[\[\{](.*?)[\]\}]\s*$', cat)
+                    match = re.search(r"^(.*?)\s*[\[\{](.*?)[\]\}]\s*$", cat)
                     if match:
                         main_cat = clean_to_title_case(match.group(1))
                         sub_cat = clean_to_title_case(match.group(2))
@@ -535,7 +535,9 @@ def _merge_existing_immutables(
             pass
 
 
-def _write_category_files(categories: Dict[str, Dict[str, Set[str]]], tmp_dir: Path) -> None:
+def _write_category_files(
+    categories: Dict[str, Dict[str, Set[str]]], tmp_dir: Path
+) -> None:
     """Writes categorized domains and their subcategories to individual text files."""
     for category, subcategories in categories.items():
         file_name = f"{sanitize_filename(category)}.txt"
