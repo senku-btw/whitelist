@@ -13,7 +13,7 @@
 - [x] https://gist.github.com/wjervis7/9f5f2abaf0822ccf317d3d8ed32d95a0
 - [ ] https://github.com/TheSmashy/O365Whitlist/tree/main
 - [x] https://gist.github.com/alex-messer/7c8426a6d701ca494e54ded31da45707
-- [ ] https://github.com/deathbybandaid/pihole-whitelists
+- [x] https://github.com/deathbybandaid/pihole-whitelists
 
 YouTube [Watch History]
 
@@ -72,6 +72,9 @@ appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com
 appspot-preview.l.google.com
 cse.google.com
+google.com
+webcache.googleusercontent.com
+chrome.google.com
 
 Google {Push Notifications}
 
@@ -86,6 +89,10 @@ firestore.googleapis.com
 Microsoft Windows
 
 msedge.api.cdp.microsoft.com
+officeclient.microsoft.com
+
+Microsoft Windows {Bitlocker}
+g.live.com
 
 Microsoft Windows {Connectivity Check}
 
@@ -103,7 +110,6 @@ i.s-microsoft.com
 login.live.com
 login.microsoftonline.com 
 
-
 Microsoft Windows {Windows Store}
 
 dl.delivery.mp.microsoft.com
@@ -112,10 +118,6 @@ displaycatalog.mp.microsoft.com
 sls.update.microsoft.com.akadns.net
 fe3.delivery.dsp.mp.microsoft.com.nsatc.net
 tlu.dl.delivery.mp.microsoft.com
-
-Windows [Bitlocker]
-
-g.live.com
 
 Microsoft Windows {Windows Updates}
 
@@ -136,6 +138,7 @@ gsp-ssl.ls.apple.com
 gsp-ssl.ls-apple.com.akadns.net
 gsp1.apple.com
 www.appleiphonecell.com
+ax.phobos.apple.com.edgesuite.net
 
 Apple {iTunes}
 
