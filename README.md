@@ -15,58 +15,86 @@
 - [ ] https://gist.github.com/alex-messer/7c8426a6d701ca494e54ded31da45707
 - [ ] https://github.com/deathbybandaid/pihole-whitelists
 
-Google
+YouTube [Watch History]
 
-android.clients.google.com
-reminders-pa.googleapis.com
-firestore.googleapis.com
-gstaticadssl.l.google.com
-googleapis.l.google.com
-dl.google.com
-mtalk.google.com
-clients4.google.com
-clients2.google.com
-www.googleapis.com
-oauthaccountmanager.googleapis.com
-android.clients.google.com
-reminders-pa.googleapis.com 
-firestore.googleapis.com
-gstaticadssl.l.google.com
-googleapis.l.google.com
-dl.google.com
-redirector.gvt1.com
-
-pihole --allow-regex "^((alt)[0-9](-))?mtalk\.google\.com$"
-
-YouTube
-
-video-stats.l.google.com
 s.youtube.com
+video-stats.l.google.com
+
+YouTube {YouTube iOS App}
+
 www.googleapis.com 
 youtubei.googleapis.com
 oauthaccountmanager.googleapis.com
 
-Windows
+Google [Google Play Store]
+
+android.clients.google.com
+
+Google 
+
+gstaticadssl.l.google.com
+googleapis.l.google.com
+dl.google.com
+redirector.gvt1.com
+connectivitycheck.android.com
+android.clients.google.com
+clients3.google.com
+connectivitycheck.gstatic.com
+
+Google {Push Notifications}
+
+mtalk.google.com
+
+Google {Google Keep}
+
+reminders-pa.googleapis.com
+firestore.googleapis.com
+
+Microsoft Windows
+
+msedge.api.cdp.microsoft.com
+
+Microsoft Windows {Connectivity Check}
 
 www.msftncsi.com
+msftncsi.com
+www.msftconnecttest.com
+ipv6.msftncsi.com
+
+Microsoft Windows {Windows Login}
+
 outlook.office365.com
 products.office.com
 c.s-microsoft.com
 i.s-microsoft.com
 login.live.com
-g.live.com
+login.microsoftonline.com 
+
+
+Microsoft Windows {Windows Store}
+
 dl.delivery.mp.microsoft.com
 geo-prod.do.dsp.mp.microsoft.com
 displaycatalog.mp.microsoft.com
-www.msftncsi.com
-www.msftconnecttest.com
-outlook.office365.com
-products.office.com
-c.s-microsoft.com
-i.s-microsoft.com
-login.live.com
-login.microsoftonline.com
 sls.update.microsoft.com.akadns.net
 fe3.delivery.dsp.mp.microsoft.com.nsatc.net
 tlu.dl.delivery.mp.microsoft.com
-officeclient.microsoft.com
+
+Windows [Bitlocker]
+
+g.live.com
+
+Microsoft Windows {Windows Updates}
+
+dl.delivery.mp.microsoft.com
+geo-prod.do.dsp.mp.microsoft.com
+displaycatalog.mp.microsoft.com
+
+Apple {Apple ID}
+
+appleid.apple.com
+
+Apple {iTunes}
+
+itunes.apple.com
+s.mzstatic.com
