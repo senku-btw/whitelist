@@ -10,7 +10,7 @@ ocsp.apple.com
 www.apple.com
 www.appleiphonecell.com
 
-# Itunes
+# iTunes
 itunes.apple.com
 s.mzstatic.com
 

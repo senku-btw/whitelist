@@ -18,9 +18,6 @@ youtube.googleapis.com
 yt3.ggpht.com
 ytimg.l.google.com
 
-# Ios Application
-youtubei.googleapis.com
-
 # Thumbnails
 i.ytimg.com
 i1.ytimg.com
@@ -30,4 +27,7 @@ s.ytimg.com
 s.youtube.com
 s2.youtube.com
 video-stats.l.google.com
+
+# iOS Application
+youtubei.googleapis.com
 

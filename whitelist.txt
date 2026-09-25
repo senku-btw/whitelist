@@ -1,8 +1,10 @@
 # Adblock Testing
 getblockify.com
 mobileproxy.space
+obfusgated.com
 
 # Commercial Business Applications
+api.fast.com
 sourceforge.net
 
 # Content Delivery Networks (CDNs)
@@ -75,5 +77,6 @@ themoviedb.com
 thetvdb.com
 
 # Podcasts
+podcast.darknetdiaries.com
 pscrb.fm
 
