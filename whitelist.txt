@@ -6,8 +6,23 @@ mobileproxy.space
 sourceforge.net
 
 # Content Delivery Networks (CDNs)
+a463.w10.akamai.net
+a790.w16.akamai.net
+ae01.alicdn.com
+akamaihd.net
+akamaitechnologies.com
+amazonaws.com
+azureedge.net
 cdn.cloudflare.net
 cdnjs.cloudflare.com
+cloudflare.com
+cloudfront.net
+d2c8v52ll5s99u.cloudfront.net
+d2gatte9o95jao.cloudfront.net
+dsms0mj1bbhn4.cloudfront.net
+e7065.e2.akamaiedge.net
+fastly.net
+gstatic.com
 jsdelivr.net
 
 # Digital Certificates

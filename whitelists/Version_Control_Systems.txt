@@ -1,4 +1,7 @@
 github.com
 github.io
+githubusercontent.com
+gitlab.com
+gitlab.io
 gitter.im
 raw.githubusercontent.com

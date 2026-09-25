@@ -1,3 +1,0 @@
-githubusercontent.com
-gitlab.com
-gitlab.io
