@@ -495,23 +495,23 @@ def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
                     if match:
                         main_cat = clean_to_title_case(match.group(1))
                         raw_subcats = match.group(2).strip()
+                        sub_cat = ""
                         if raw_subcats:
-                            sub_cats = [
+                            parsed_subs = [
                                 clean_to_title_case(s)
                                 for s in re.split(r"\s*,\s*", raw_subcats)
                                 if s.strip()
                             ]
-                        else:
-                            sub_cats = [""]
+                            if parsed_subs:
+                                sub_cat = parsed_subs[0]
                     else:
                         main_cat = clean_to_title_case(cat)
-                        sub_cats = [""]
+                        sub_cat = ""
 
                     if not main_cat:
                         continue
 
-                    for sub_cat in sub_cats:
-                        categories[main_cat][sub_cat].add(cleaned_domain)
+                    categories[main_cat][sub_cat].add(cleaned_domain)
 
     except sqlite3.Error as e:
         print(f"Error reading gravity.db for file extraction: {e}")
