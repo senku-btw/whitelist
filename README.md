@@ -9,7 +9,7 @@
 - [x] https://github.com/TJohnson93/PiHoleWhiteLists
 - [x] https://discourse.pi-hole.net/t/commonly-whitelisted-domains/212
 - [x] https://github.com/Soundium/Pi_hole_Whitelist
-- [ ] https://github.com/bahree/pihole-lists/blob/main/whitelist.txt
+- [x] https://github.com/bahree/pihole-lists/blob/main/whitelist.txt
 - [ ] https://gist.github.com/wjervis7/9f5f2abaf0822ccf317d3d8ed32d95a0
 - [ ] https://github.com/TheSmashy/O365Whitlist/tree/main
 - [ ] https://gist.github.com/alex-messer/7c8426a6d701ca494e54ded31da45707
@@ -37,6 +37,7 @@ www.youtube.com
 www.youtube-nocookie.com
 youtube.googleapis.com
 youtube-nocookie.com
+googlevideo.com
 
 
 Google [Google Play Store]
@@ -103,14 +104,28 @@ dl.delivery.mp.microsoft.com
 geo-prod.do.dsp.mp.microsoft.com
 displaycatalog.mp.microsoft.com
 
-Apple {Apple ID}
+Apple
 
+apple.com
+icloud.com
 appleid.apple.com
+gsp1.apple.com
+ocsp.apple.com
+captive.apple.com
 
 Apple {iTunes}
 
 itunes.apple.com
 s.mzstatic.com
+
+Facebook
+
+facebook.com
+facebook.net
+fbcdn.net
+fbsbx.com
+fbcdn.com
+messenger.com
 
 Reddit
 
@@ -119,8 +134,60 @@ www.redditstatic.com
 reddit.map.fastly.net
 www.redditmedia.com
 reddit-uploaded-media.s3-accelerate.amazonaws.com
+reddit.com
+redditmedia.com
+redditstatic.com
+redd.it
 
 pihole --white-regex [a-z]\.thumbs\.redditmedia\.com
+
+Spotify
+
+spotify.com
+scdn.co
+akamaized.net
+edgesuite.net
+
+Version Control Systems (VSCs)
+
+github.com
+githubusercontent.com
+github.io
+gitlab.com
+gitlab.io
+
+General Infrastructure
+
+cloudflare.com
+cloudfront.net
+akamaihd.net
+akamaized.net
+akamaitechnologies.com
+amazonaws.com
+fastly.net
+azureedge.net
+googleapis.com
+gstatic.com
+jsdelivr.net
+cdnjs.cloudflare.com
+
+hosts
+
+adaway.org
+adblock.dk
+easylist.to
+easylist-downloads.adblockplus.org
+hosts-file.net
+hostsfile.org
+someonewhocares.org
+pgl.yoyo.org
+phishing.army
+ransomwaretracker.abuse.ch
+iplists.firehol.org
+dbl.oisd.nl
+blocklist.kowabit.de
+road.adblock.ro
+sysctl.org
 
 Signal
 
