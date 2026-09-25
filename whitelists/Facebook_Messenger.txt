@@ -12,10 +12,16 @@ edge-chat.messenger.com
 edge-mqtt-fallback.facebook.com
 edge-mqtt.facebook.com
 facebook.com
+facebook.net
+fbcdn.com
 fbcdn.net
+fbsbx.com
+messenger.com
 mqtt-mini.facebook.com
 mqtt.c10r.facebook.com
 scontent.xx.fbcdn.net
+star-mini.c10r.facebook.com
+star.c10r.facebook.com
 static.xx.fbcdn.net
 web-fallback.facebook.com
 web.facebook.com

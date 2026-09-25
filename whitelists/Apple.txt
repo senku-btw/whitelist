@@ -1,6 +1,16 @@
+apple.com
 appleid.apple.com
 ax.phobos.apple.com.edgesuite.net
-itunes.apple.com
+captive.apple.com
+gsp-ssl.ls-apple.com.akadns.net
+gsp-ssl.ls.apple.com
+gsp1.apple.com
+icloud.com
 ocsp.apple.com
 www.apple.com
 www.appleiphonecell.com
+
+# Itunes
+itunes.apple.com
+s.mzstatic.com
+

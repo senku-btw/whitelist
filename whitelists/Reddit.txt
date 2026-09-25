@@ -1,9 +1,12 @@
 b.thumbs.redditmedia.com
 cdn.embedly.com
+redd.it
 reddit-uploaded-media.s3-accelerate.amazonaws.com
 reddit.com
 reddit.map.fastly.net
+redditmedia.com
 redditstatic.com
 styles.redditmedia.com
 www.reddit.com
 www.redditmedia.com
+www.redditstatic.com

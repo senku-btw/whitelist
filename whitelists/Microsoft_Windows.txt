@@ -1,11 +1,32 @@
 account.live.com
 ctldl.windowsupdate.com
-dl.delivery.mp.microsoft.com
+msedge.api.cdp.microsoft.com
+officeclient.microsoft.com
+
+# Bitlocker
+g.live.com
+
+# Connectivity Check
 dns.msftncsi.com
-fe3.delivery.dsp.mp.microsoft.com.nsatc.net
-geo-prod.do.dsp.mp.microsoft.com
+ipv6.msftncsi.com
+www.msftconnecttest.com
+www.msftncsi.com
+
+# Windows Account
+c.s-microsoft.com
+i.s-microsoft.com
 login.live.com
 login.microsoftonline.com
+outlook.office365.com
+products.office.com
+
+# Windows Store
+dl.delivery.mp.microsoft.com
+fe3.delivery.dsp.mp.microsoft.com.nsatc.net
+geo-prod.do.dsp.mp.microsoft.com
 sls.update.microsoft.com.akadns.net
 tlu.dl.delivery.mp.microsoft.com
-www.msftconnecttest.com
+
+# Windows Store.Windows Updates
+displaycatalog.mp.microsoft.com
+
