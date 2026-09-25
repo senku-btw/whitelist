@@ -559,7 +559,7 @@ def _write_category_files(categories: Dict[str, Dict[str, Set[str]]], tmp_dir: P
                     if is_valid_domain(sanitize_domain(d))
                 }
                 base_domains = sorted(sanitized_base_set)
-                
+
                 for domain in base_domains:
                     f.write(f"{domain}\n")
                 if base_domains and len(subcategories) > 1:
@@ -573,7 +573,7 @@ def _write_category_files(categories: Dict[str, Dict[str, Set[str]]], tmp_dir: P
                     if is_valid_domain(sanitize_domain(d))
                 }
                 subcat_domains = sorted(sanitized_subcat_set)
-                
+
                 if subcat_domains:
                     f.write(f"# {subcat}\n")
                     for domain in subcat_domains:
