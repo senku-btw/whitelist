@@ -33,12 +33,21 @@ youtube-ui.l.google.com
 tv.youtube.com
 s2.youtube.com
 s2.youtube.com
+yt3.ggpht.com
+geo3.ggpht.com
 www.youtube.com
 www.youtube-nocookie.com
 youtube.googleapis.com
 youtube-nocookie.com
 googlevideo.com
-
+i.ytimg.com
+i1.ytimg.com
+s.ytimg.com
+s.youtube.com
+s2.youtube.com
+youtube-nocookie.com
+youtu.be
+redirector.googlevideo.com 
 
 Google [Google Play Store]
 
@@ -52,12 +61,22 @@ dl.google.com
 redirector.gvt1.com
 connectivitycheck.android.com
 android.clients.google.com
+clients1.google.com
+clients2.google.com
 clients3.google.com
+clients4.google.com
+clients5.google.com
+clients6.google.com
 connectivitycheck.gstatic.com
+appsbackup-pa.clients6.google.com
+appsbackup-pa.googleapis.com
+appspot-preview.l.google.com
+cse.google.com
 
 Google {Push Notifications}
 
 mtalk.google.com
+instantmessaging-pa.googleapis.com
 
 Google {Google Keep}
 
@@ -184,6 +203,7 @@ googleapis.com
 gstatic.com
 jsdelivr.net
 cdnjs.cloudflare.com
+akamaihd.net · akamaitechnologies.com · akamaized.net · a463.w10.akamai.net · a790.w16.akamai.net · e7065.e2.akamaiedge.net · fbcdn-creative-a.akamaihd.net · cloudfront.net via d2c8v52ll5s99u.cloudfront.net · d2gatte9o95jao.cloudfront.net · dsms0mj1bbhn4.cloudfront.net · cdn.cloudflare.net · cdnjs.cloudflare.com · imgix.net · res.cloudinary.com · ae01.alicdn.com
 
 hosts
 
