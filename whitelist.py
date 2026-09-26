@@ -2,7 +2,7 @@
 Combined Autonomous Pi-hole Group Manager, Whitelist Pipeline, and Git Sync.
 
 Executes a unified pipeline:
-1. Migrates blank-comment domains from the Default group in gravity.db into whitelist.txt, 
+1. Migrates blank-comment domains from the Default group in gravity.db into whitelist.txt,
    deduplicating and sorting them alphabetically.
 2. Rebuilds Pi-hole groups based on regular domain comments (min 2 occurrences)
    and maps domains/clients, ignoring default web query log entries.
@@ -244,11 +244,11 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
         FROM domainlist d
         JOIN domainlist_by_group dbg ON d.id = dbg.domainlist_id
         JOIN "group" g ON dbg.group_id = g.id
-        WHERE d.type = 0 
+        WHERE d.type = 0
           AND (d.comment IS NULL OR trim(d.comment) = '')
           AND g.name = ?
         """,
-        (DEFAULT_GROUP,)
+        (DEFAULT_GROUP,),
     )
 
     db_ids_to_delete = []
@@ -260,7 +260,7 @@ def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
 
     # Write the clean, comment-free, sorted list back to the file
     _write_whitelist_file(whitelist_domains)
-    
+
     return db_ids_to_delete
 
 
@@ -432,6 +432,7 @@ def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
             "to their corresponding groups."
         )
 
+
 def restore_client_mappings(
     cursor: sqlite3.Cursor,
     client_backup: Dict[int, List[str]],
@@ -462,6 +463,7 @@ def restore_client_mappings(
             "Restored saved configurations and enforced Default fallback "
             f"for {unique_clients} client(s)."
         )
+
 
 # ==============================================================================
 # Part 2: Categorized Whitelist File Extraction
