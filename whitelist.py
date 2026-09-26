@@ -2,8 +2,8 @@
 Combined Autonomous Pi-hole Group Manager, Whitelist Pipeline, and Git Sync.
 
 Executes a unified pipeline:
-1. Migrates '#' comment domains from gravity.db into whitelist.txt, preserving
-   category comment order while sorting domains within each category.
+1. Migrates blank-comment domains from the Default group in gravity.db into whitelist.txt, 
+   deduplicating and sorting them alphabetically.
 2. Rebuilds Pi-hole groups based on regular domain comments (min 2 occurrences)
    and maps domains/clients, ignoring default web query log entries.
 3. Extracts categorized whitelists from gravity.db into individual files under whitelists/.
@@ -205,79 +205,67 @@ def _parse_category_comment(cat: str) -> Tuple[str, str]:
 # ==============================================================================
 
 
-def parse_whitelist_file() -> Dict[str, Set[str]]:
+def parse_whitelist_file() -> Set[str]:
     """
-    Parses whitelist.txt into a dict mapping category comments to sets of domains,
-    preserving the original order in which category headers appear.
+    Parses whitelist.txt extracting only valid domains.
+    Ignores all comments and empty lines for strict deduplication.
     """
-    merged_data: Dict[str, Set[str]] = {}
-    current_comment = None
-
+    domains = set()
     if WHITELIST_TXT_PATH.exists():
         with open(WHITELIST_TXT_PATH, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
-                if not line:
-                    continue
-                if line.startswith("#"):
-                    raw_comment = line.lstrip("#").strip()
-                    formatted_comment = clean_to_title_case(raw_comment)
-                    current_comment = f"# {formatted_comment}"
-                    if current_comment not in merged_data:
-                        merged_data[current_comment] = set()
-                elif current_comment:
+                if line and not line.startswith("#"):
                     sanitized = sanitize_domain(line)
                     if is_valid_domain(sanitized):
-                        merged_data[current_comment].add(sanitized)
+                        domains.add(sanitized)
+    return domains
 
-    return merged_data
 
-
-def _write_whitelist_file(cleaned_whitelist: Dict[str, List[str]]) -> None:
-    """Helper to write formatted whitelist categories and domains to whitelist.txt."""
+def _write_whitelist_file(domains: Set[str]) -> None:
+    """Helper to write deduplicated, alphabetically sorted domains cleanly to whitelist.txt."""
     with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
-        for cat_comment, doms in cleaned_whitelist.items():
-            f.write(f"{cat_comment}\n")
-            for dom in doms:
-                f.write(f"{dom}\n")
-            f.write("\n")
+        for dom in sorted(domains):
+            f.write(f"{dom}\n")
 
 
 def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
     """
-    Parses whitelist.txt and gravity.db '#' entries, recreates whitelist.txt
-    preserving category order and sorting domains under each category.
-    Allows domains to exist across multiple categories without pruning.
+    Parses whitelist.txt and gravity.db to extract whitelist domains (type 0)
+    that belong strictly to the Default group and possess no comment.
+    These are merged into whitelist.txt and marked for database deletion.
     """
-    merged_data = parse_whitelist_file()
+    whitelist_domains = parse_whitelist_file()
 
+    # Query domains in the Default group with empty or null comments
     cursor.execute(
-        "SELECT id, domain, comment FROM domainlist "
-        "WHERE type = 0 AND comment LIKE '#%'"
+        """
+        SELECT d.id, d.domain
+        FROM domainlist d
+        JOIN domainlist_by_group dbg ON d.id = dbg.domainlist_id
+        JOIN "group" g ON dbg.group_id = g.id
+        WHERE d.type = 0 
+          AND (d.comment IS NULL OR trim(d.comment) = '')
+          AND g.name = ?
+        """,
+        (DEFAULT_GROUP,)
     )
 
     db_ids_to_delete = []
-    for domain_id, domain, comment in cursor.fetchall():
+    for domain_id, domain in cursor.fetchall():
         clean_dom = sanitize_domain(domain)
         if is_valid_domain(clean_dom):
-            for cat in split_comment_into_groups(comment.lstrip("#").strip()):
-                cleaned_comment, _ = _parse_category_comment(cat)
-                clean_cmt = f"# {cleaned_comment}"
-                merged_data.setdefault(clean_cmt, set()).add(clean_dom)
-            db_ids_to_delete.append(domain_id)
+            whitelist_domains.add(clean_dom)
+        db_ids_to_delete.append(domain_id)
 
-    cleaned_whitelist = {
-        cat: sorted([d for d in doms if is_valid_domain(d)])
-        for cat, doms in merged_data.items()
-        if any(is_valid_domain(d) for d in doms)
-    }
-
-    _write_whitelist_file(cleaned_whitelist)
+    # Write the clean, comment-free, sorted list back to the file
+    _write_whitelist_file(whitelist_domains)
+    
     return db_ids_to_delete
 
 
 def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
-    """Deletes migrated '#' domains and their group links from gravity.db."""
+    """Deletes migrated domains and their group links from gravity.db."""
     if not ids_to_delete:
         return
 
@@ -289,7 +277,7 @@ def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
         "DELETE FROM domainlist WHERE id = ?",
         [(domain_id,) for domain_id in ids_to_delete],
     )
-    print(f"Removed {len(ids_to_delete)} migrated '#' domain(s) from gravity.db.")
+    print(f"Removed {len(ids_to_delete)} migrated domain(s) from gravity.db.")
 
 
 def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
