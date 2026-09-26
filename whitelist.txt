@@ -1,86 +1,61 @@
-# Adblock Testing
-getblockify.com
-mobileproxy.space
-obfusgated.com
-
-# Commercial Business Applications
-api.fast.com
-sourceforge.net
-
-# Content Delivery Networks (CDNs)
-a463.w10.akamai.net
-a790.w16.akamai.net
-ae01.alicdn.com
-akamaihd.net
-akamaitechnologies.com
+adaway.org
+adblock.dk
 amazonaws.com
-azureedge.net
+api.fast.com
+blocklist.kowabit.de
 cdn.cloudflare.net
 cdnjs.cloudflare.com
 cloudflare.com
 cloudfront.net
-d2c8v52ll5s99u.cloudfront.net
-d2gatte9o95jao.cloudfront.net
-dsms0mj1bbhn4.cloudfront.net
-e7065.e2.akamaiedge.net
-fastly.net
-gstatic.com
-jsdelivr.net
-
-# Digital Certificates
 crl.microsoft.com
+dbl.oisd.nl
+easylist-downloads.adblockplus.org
+easylist.to
+fastly.net
+getblockify.com
+giphy.com
+gravatar.com
+gstatic.com
+hosts-file.net
+hostsfile.mine.nu
+hostsfile.org
+imagesak.secureserver.net
+imgix.net
+iplists.firehol.org
+jsdelivr.net
+mobileproxy.space
 mscrl.microsoft.com
+obfusgated.com
 ocsp.apple.com
 ocsp.msocsp.com
 ocsp.rootg2.amazontrust.com
 ocsp.usertrust.com
+pgl.yoyo.org
+phishing.army
+placehold.it
+placeholdit.imgix.net
+podcast.darknetdiaries.com
+pscrb.fm
+ransomwaretracker.abuse.ch
+res.cloudinary.com
+road.adblock.ro
 s1.symcb.com
 s2.symcb.com
+s3.amazonaws.com
 s3.symcb.com
 s4.symcb.com
 s5.symcb.com
 sa.symcb.com
-
-# Dynamic Placeholder Endpoints
-gravatar.com
-imagesak.secureserver.net
-imgix.net
-placehold.it
-placeholdit.imgix.net
-res.cloudinary.com
-
-# Front‑End Delivery Networks
-cdn.cloudflare.net
-cdnjs.cloudflare.com
-gstatic.com
-
-# Infrastructure As A Service (IaaS)
-amazonaws.com
-s3.amazonaws.com
-
-# Media Distribution Infrastructure
-brightcove.net
-cdn.vidible.tv
-delivery.vidible.tv
-edge.api.brightcove.com
-giphy.com
-img.vidible.tv
-imgs.xkcd.com
-players.brightcove.net
-secure.brightcove.com
-videos.vidible.tv
-vidtech.cbsinteractive.com
-voe.sx
-
-# Tv & Movies
+someonewhocares.org
+sourceforge.net
+sysctl.org
 themoviedb.com
 thetvdb.com
+v.firebog.net
+voe.sx
+winhelp2002.mvps.org
+zeustracker.abuse.ch
 
-# Podcasts
-podcast.darknetdiaries.com
-pscrb.fm
-
-# Version Control Systems (VCS)
 github.com
 github.io
 githubusercontent.com
@@ -89,24 +64,4 @@ gitlab.io
 gitter.im
 raw.githubusercontent.com
 
-# Hosts
-adaway.org
-adblock.dk
-blocklist.kowabit.de
-dbl.oisd.nl
-easylist-downloads.adblockplus.org
-easylist.to
-hosts-file.net
-hostsfile.mine.nu
-hostsfile.org
-iplists.firehol.org
-pgl.yoyo.org
-phishing.army
-ransomwaretracker.abuse.ch
-road.adblock.ro
-someonewhocares.org
-sysctl.org
-v.firebog.net
-winhelp2002.mvps.org
-zeustracker.abuse.ch
 
