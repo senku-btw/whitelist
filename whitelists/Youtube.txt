@@ -2,10 +2,13 @@ geo3.ggpht.com
 google.com
 googlevideo.com
 history.google.com
+i.ytimg.com
+i1.ytimg.com
 img.youtube.com
 manifest.googlevideo.com
 oauthaccountmanager.googleapis.com
 redirector.googlevideo.com
+s.ytimg.com
 tv.youtube.com
 www.googleapis.com
 www.youtube-nocookie.com
@@ -15,19 +18,12 @@ youtube-nocookie.com
 youtube-ui.l.google.com
 youtube.com
 youtube.googleapis.com
+youtubei.googleapis.com
 yt3.ggpht.com
 ytimg.l.google.com
-
-# Thumbnails
-i.ytimg.com
-i1.ytimg.com
-s.ytimg.com
 
 # Watch History
 s.youtube.com
 s2.youtube.com
 video-stats.l.google.com
-
-# iOS Application
-youtubei.googleapis.com
 

@@ -1,7 +1,13 @@
 account.live.com
+c.s-microsoft.com
 ctldl.windowsupdate.com
+i.s-microsoft.com
+login.live.com
+login.microsoftonline.com
 msedge.api.cdp.microsoft.com
 officeclient.microsoft.com
+outlook.office365.com
+products.office.com
 
 # Bitlocker
 g.live.com
@@ -11,14 +17,6 @@ dns.msftncsi.com
 ipv6.msftncsi.com
 www.msftconnecttest.com
 www.msftncsi.com
-
-# Windows Account
-c.s-microsoft.com
-i.s-microsoft.com
-login.live.com
-login.microsoftonline.com
-outlook.office365.com
-products.office.com
 
 # Windows Store
 displaycatalog.mp.microsoft.com

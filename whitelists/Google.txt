@@ -14,7 +14,6 @@ clients5.google.com
 clients6.google.com
 connectivitycheck.android.com
 cse.google.com
-dl.google.com
 fonts.gstatic.com
 google.com
 googleapis.com
@@ -26,6 +25,9 @@ webcache.googleusercontent.com
 www.google.com
 www.googleapis.com
 ytimg.l.google.com
+
+# Google Chrome
+dl.google.com
 
 # Google Play Store
 android.clients.google.com

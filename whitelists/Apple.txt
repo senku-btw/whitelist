@@ -6,11 +6,11 @@ gsp-ssl.ls-apple.com.akadns.net
 gsp-ssl.ls.apple.com
 gsp1.apple.com
 icloud.com
+itunes.apple.com
 ocsp.apple.com
 www.apple.com
 www.appleiphonecell.com
 
 # iTunes
-itunes.apple.com
 s.mzstatic.com
 
