@@ -4,7 +4,6 @@ accounts.google.com
 appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com
 appspot-preview.l.google.com
-chrome.google.com
 clients1.google.com
 clients2.google.com
 clients2.googleusercontent.com
@@ -21,13 +20,14 @@ googleapis.l.google.com
 lh3.googleusercontent.com
 oauthaccountmanager.googleapis.com
 redirector.gvt1.com
-webcache.googleusercontent.com
 www.google.com
 www.googleapis.com
 ytimg.l.google.com
 
 # Google Chrome
+chrome.google.com
 dl.google.com
+webcache.googleusercontent.com
 
 # Google Play Store
 android.clients.google.com
