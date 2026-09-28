@@ -13,3 +13,4 @@
 - [x] https://github.com/TheSmashy/O365Whitlist/tree/main
 - [x] https://gist.github.com/alex-messer/7c8426a6d701ca494e54ded31da45707
 - [x] https://github.com/deathbybandaid/pihole-whitelists
+- [ ] https://github.com/hl2guide/Filterlist-for-AdGuard-or-PiHole
