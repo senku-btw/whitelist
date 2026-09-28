@@ -4,7 +4,7 @@
 
 - [x] https://github.com/GoodnessJSON/PiHole-Whitelist
 - [x] https://github.com/anudeepND/whitelist
-- [ ] https://github.com/rahilpathan/pihole-whitelist/tree/main
+- [x] https://github.com/rahilpathan/pihole-whitelist/tree/main
 - [x] https://github.com/TJohnson93/PiHoleWhiteLists
 - [x] https://discourse.pi-hole.net/t/commonly-whitelisted-domains/212
 - [x] https://github.com/Soundium/Pi_hole_Whitelist
