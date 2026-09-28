@@ -1,5 +1,4 @@
 adaway.org
-adblock.dk
 amazonaws.com
 api.fast.com
 blocklist.kowabit.de
@@ -29,7 +28,6 @@ imgix.net
 iplists.firehol.org
 jsdelivr.net
 mobileproxy.space
-mscrl.microsoft.com
 obfusgated.com
 ocsp.apple.com
 ocsp.msocsp.com
@@ -43,15 +41,7 @@ podcast.darknetdiaries.com
 pscrb.fm
 ransomwaretracker.abuse.ch
 raw.githubusercontent.com
-res.cloudinary.com
-road.adblock.ro
-s1.symcb.com
-s2.symcb.com
 s3.amazonaws.com
-s3.symcb.com
-s4.symcb.com
-s5.symcb.com
-sa.symcb.com
 someonewhocares.org
 sourceforge.net
 sysctl.org
