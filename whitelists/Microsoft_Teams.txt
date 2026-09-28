@@ -1,0 +1,7 @@
+api.teams.skype.com
+img.teams.skype.com
+teams.cdn.office.net
+teams.events.data.microsoft.com
+teams.microsoft.us
+teams.skype.com
+teams.trafficmanager.net
