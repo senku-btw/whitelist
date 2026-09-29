@@ -1,8 +1,5 @@
-a.thumbs.redditmedia.com
-b.thumbs.redditmedia.com
 cdn.embedly.com
 e.reddit.com
-emoji.redditmedia.com
 external-preview.redd.it
 gateway.reddit.com
 gql.reddit.com
@@ -15,13 +12,10 @@ redd.it
 reddit-uploaded-media.s3-accelerate.amazonaws.com
 reddit.com
 reddit.map.fastly.net
-redditmedia.com
 redditstatic.com
 s.reddit.com
 ssl.reddit.com
 strapi.reddit.com
-styles.redditmedia.com
 v.redd.it
 www.reddit.com
-www.redditmedia.com
 www.redditstatic.com

@@ -13,5 +13,4 @@ images-amazon.com
 msh.amazon.co.uk
 s3.amazonaws.com
 unagi.amazon.it
-wchat.freshchat.com
 www.amazon.com

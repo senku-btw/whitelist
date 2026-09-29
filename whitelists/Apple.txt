@@ -4,6 +4,7 @@ amp-api-edge.apps.apple.com
 amp-api-search-edge.apps-lb.itunes-apple.com.akadns.net
 amp-api-search-edge.apps.apple.com
 appldnld.apple.com
+apple-cloudkit.com
 apple.box.com
 apple.com
 appleid.apple.com
@@ -37,7 +38,10 @@ gsp-ssl.ls-apple.com.akadns.net
 gsp-ssl.ls.apple.com
 gsp1.apple.com
 humb.apple.com
+icloud-content.com
+icloud.apple
 icloud.com
+icloud.com.cn
 identity.apple.com
 ig.apple.com
 iprofiles.apple.com
@@ -83,10 +87,3 @@ ws-ee-maidsvc.icloud.com
 www.apple.com
 www.appleiphonecell.com
 xp.apple.com
-
-# iCloud
-apple-cloudkit.com
-icloud-content.com
-icloud.apple
-icloud.com.cn
-
