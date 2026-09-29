@@ -31,6 +31,12 @@ beta.facebook.com
 l.facebook.com
 lm.facebook.com
 m.me
+api.facebook.com
+b-api.facebook.com
+b-graph.facebook.com
+graph.facebook.com
+developers.facebook.com
+graph.accountkit.com
 scontent.fgdl5-1.fna.fbcdn.net
 scontent.xx.fbcdn.net
 star-mini.c10r.facebook.com
