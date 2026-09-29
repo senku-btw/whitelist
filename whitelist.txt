@@ -4,6 +4,11 @@ adaway.org
 addons.cdn.mozilla.net
 addons.mozilla.org
 go.pardot.com
+info.cloudflare.com
+m.stripe.com
+m.stripe.network
+secure.gravatar.com
+update.code.visualstudio.com
 bs.to
 gravatar.com
 stackpath.bootstrapcdn.com
