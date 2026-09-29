@@ -17,3 +17,4 @@
 - [ ] https://gist.github.com/dieechtenilente/5f6e29a3d5384bff68d7c9cc3e08cc0d
 - [x] https://github.com/bubusan80/whitelist_hosting_public
 - [ ] https://github.com/nbarari/domain-allowlist
+- [x] https://github.com/gioxx/ph-whitelist
