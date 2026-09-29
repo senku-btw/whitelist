@@ -22,6 +22,15 @@ graph.facebook.com
 mqtt.c10r.facebook.com
 portal.fb.com
 scontent-lhr3-1.xx.fbcdn.net
+facebook.com
+www.facebook.com
+web.facebook.com
+m.facebook.com
+b-www.facebook.com
+beta.facebook.com
+l.facebook.com
+lm.facebook.com
+m.me
 scontent.fgdl5-1.fna.fbcdn.net
 scontent.xx.fbcdn.net
 star-mini.c10r.facebook.com
