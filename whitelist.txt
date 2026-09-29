@@ -3,6 +3,12 @@
 adaway.org
 addons.cdn.mozilla.net
 addons.mozilla.org
+go.pardot.com
+bs.to
+streamtape.com
+vivo.sx
+proxer.me
+voe.sx
 adguard.com
 adguardteam.github.io
 amazonaws.com
