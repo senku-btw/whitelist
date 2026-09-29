@@ -5,6 +5,9 @@ addons.cdn.mozilla.net
 addons.mozilla.org
 go.pardot.com
 info.cloudflare.com
+gravatar.com
+www.gravatar.com
+secure.gravatar.com
 m.stripe.com
 m.stripe.network
 secure.gravatar.com
