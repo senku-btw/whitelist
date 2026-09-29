@@ -17,9 +17,11 @@ clients3.google.com
 clients4.google.com
 clients5.google.com
 clients6.google.com
+code.google.com
 connectivitycheck.android.com
 contacts.google.com
 cse.google.com
+developers.google.com
 drive.google.com
 fonts.gstatic.com
 gmail.com
@@ -29,6 +31,7 @@ googleapis.com
 googleapis.l.google.com
 googlehosted.l.googleusercontent.com
 googleusercontent.com
+groups.google.com
 home.plus.google.com
 id.google.co.in
 id.google.com
