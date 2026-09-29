@@ -1,0 +1,4 @@
+cloudflare-dns.com
+cloudflare.com
+opendns.com
+quad9.net

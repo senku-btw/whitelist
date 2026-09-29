@@ -1,5 +1,4 @@
 0.client-channel.google.com
-2.android.pool.ntp.org
 accounts.google.com
 adwords.google.com
 ajax.googleapis.com
