@@ -22,8 +22,11 @@ mqtt.c10r.facebook.com
 scontent.xx.fbcdn.net
 star-mini.c10r.facebook.com
 star.c10r.facebook.com
+star.facebook.com
 static.xx.fbcdn.net
 web-fallback.facebook.com
 web.facebook.com
 www.facebook.com
 z-m-gateway.facebook.com
+z-m-graph.facebook.com
+z-m.c10r.facebook.com

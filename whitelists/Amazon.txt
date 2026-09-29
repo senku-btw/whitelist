@@ -1,0 +1,17 @@
+2mcmg31d.r.us-east-1.awstrack.me
+aan.amazon.com
+aax-us-iad.amazon.com
+amazon.com
+amazonaws.com
+amzn.to
+api.eu-west-1.aiv-delivery.net
+awstrack.me
+eu.api.amazonvideo.com
+fls-eu.amazon.com
+fls-na.amazon.com
+images-amazon.com
+msh.amazon.co.uk
+s3.amazonaws.com
+unagi.amazon.it
+wchat.freshchat.com
+www.amazon.com
