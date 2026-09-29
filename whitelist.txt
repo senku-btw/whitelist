@@ -6,6 +6,7 @@ addons.mozilla.org
 adguard.com
 adguardteam.github.io
 amazonaws.com
+anchor.fm
 api.adguard.com
 api.dropbox.com
 api.fast.com
