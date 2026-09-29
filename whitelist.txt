@@ -22,7 +22,6 @@ archlinux.org
 assets-cdn.github.com
 assets.gitlab-static.net
 assets.vimeo.com
-audible.com
 authy.vimeo.com
 avatars0.githubusercontent.com
 avatars1.githubusercontent.com
@@ -179,13 +178,11 @@ i-dont-care-about-cookies.eu
 i.ebayimg.com
 i.ibb.co
 i.imgur.com
-i.scdn.co
 i.vimeocdn.com
 id.m.wikipedia.com
 id.wikipedia.com
 images-na.ssl-images-amazon.com
 imagesak.secureserver.net
-img.x.soundcloud.com
 img.xda-developers.com
 imgix.net
 input.mozilla.org
@@ -198,11 +195,8 @@ jp.wikipedia.com
 jsdelivr.net
 launchpad.net
 linuxmint.com
-m.audible.com
-m.blackberry.com
 m.codemasters.com
 m.media-amazon.com
-m.soundcloud.com
 m.stripe.com
 m.stripe.network
 mail.protonmail.com
@@ -211,7 +205,6 @@ malwarebytes.com
 malwarebytes.invisionmanaged.net
 malwarebytes.org
 mb-cosmos.com
-media.soundcloud.com
 media.steampowered.com
 media.xda-developers.com
 media4.steampowered.com
@@ -262,7 +255,6 @@ placehold.it
 placeholdit.imgix.net
 player.vimeo.com
 podcast.darknetdiaries.com
-press.vimeo.com
 privacy.sexy
 prod-www.malwarebytes.com
 protonmail.ch
@@ -278,17 +270,13 @@ redhat.com
 redhat.io
 s3.amazonaws.com
 search.vimeo.com
-secure.soundcloud.com
 snapcraft.io
 softwarecollections.org
 someonewhocares.org
-soundcheck.soundcloud.com
-soundcloud.com
 sourceforge.net
 speedtest.net
 static.opensuse.org
 static.oracle.com
-static.soundcloud.com
 staticcdn.duckduckgo.com
 status.github.com
 status.vimeo.com
