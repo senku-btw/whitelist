@@ -1,6 +1,13 @@
+steamcdn-a.akamaihd.net
+steamcommunity-a.akamaihd.net
 steamcommunity.com
 steamcontent.com
+steamdb.info
 steampowered.com
 steamstatic.com
+steamstore-a.akamaihd.net
+steamusercontent-a.akamaihd.net
 steamusercontent.com
+steamuserimages-a.akamaihd.net
+store.steampowered.com
 valvesoftware.com

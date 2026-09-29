@@ -2,10 +2,13 @@ albert.apple.com
 appldnld.apple.com
 apple.com
 appleid.apple.com
+ax.init.itunes.apple.com
+ax.itunes.apple.com
 ax.phobos.apple.com.edgesuite.net
 bpapi.apple.com
 captive.apple.com
 configuration.apple.com
+configuration.apple.com.akadns.net
 crl.apple.com
 crl.entrust.net
 crl3.digicert.com
@@ -16,6 +19,7 @@ deviceservices-external.apple.com
 diagassets.apple.com
 doh.dns.apple.com
 fba.apple.com
+feedbackws.icloud.com
 gdmf.apple.com
 gg.apple.com
 gnf-mdn.apple.com
@@ -31,7 +35,9 @@ ig.apple.com
 iprofiles.apple.com
 isu.apple.com
 itunes.apple.com
+itunesconnect.apple.com
 lcdn-registration.apple.com
+m.store.apple.com
 mdmenrollment.apple.com
 mesu.apple.com
 ns.itunes.apple.com

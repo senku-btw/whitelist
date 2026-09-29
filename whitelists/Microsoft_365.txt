@@ -65,6 +65,7 @@ onenote.com
 online.office.com
 onmicrosoft.com
 outlook.com
+outlook.live.com
 outlook.office.com
 passwordreset.microsoftonline.com
 portal.cloudappsecurity.com

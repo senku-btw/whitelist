@@ -9,12 +9,15 @@ oauthaccountmanager.googleapis.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
+sponsor.ajay.app
 tv.youtube.com
 video-stats.l.google.com
 www.googleapis.com
 www.youtube-nocookie.com
 www.youtube.com
+yimg.com
 youtu.be
+youtube-dl.org
 youtube-nocookie.com
 youtube-ui.l.google.com
 youtube.com

@@ -1,6 +1,14 @@
+1storecatalogrevocation.storequality.microsoft.com
+2.au.download.windowsupdate.com
 account.live.com
+acctcdn.msauth.net
+acctcdn.msftauth.net
+au.download.windowsupdate.com
+au.v4.download.windowsupdate.com
 c.s-microsoft.com
 ctldl.windowsupdate.com
+download.windowsupdate.com
+ds.download.windowsupdate.com
 i.s-microsoft.com
 login.live.com
 login.microsoftonline.com
@@ -8,6 +16,14 @@ msedge.api.cdp.microsoft.com
 officeclient.microsoft.com
 outlook.office365.com
 products.office.com
+settings-win.data.microsoft.com
+settings.data.microsoft.com
+smartscreen-prod.microsoft.com
+smartscreen.microsoft.com
+store-images.microsoft.com
+store-images.s-microsoft.com
+storecatalogrevocation.storequality.microsoft.com
+storeedgefd.dsx.mp.microsoft.com
 
 # Bitlocker
 g.live.com

@@ -1,6 +1,14 @@
+cdn.discordapp.com
 discord.com
 discord.gg
 discord.media
 discordapp.com
 discordapp.net
 discordstatus.com
+images-1.discordapp.net
+images-2.discordapp.net
+images-ext-1.discordapp.net
+images-ext-2.discordapp.net
+images.discordapp.net
+media.discordapp.net
+status.discord.com

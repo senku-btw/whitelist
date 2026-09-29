@@ -1,6 +1,14 @@
 accounts.spotify.com
+api-partner.spotify.com
+api-tv.spotify.com
 api.spotify.com
+audio-ak.spotify.com.edgesuite.net
+audio-ake.spotify.com.edgesuite.net
+audio-akp.spotify.com.edgesuite.net
 audio-fa.scdn.co
+audio-fa.spotify.com
+audio-sp.spotify.com
+exp.wg.spotify.com
 i.scdn.co
 open.spotify.com
 scdn.co
