@@ -1,0 +1,13 @@
+edge-chat.facebook.com
+2-edge-chat.facebook.com
+3-edge-chat.facebook.com
+4-edge-chat.facebook.com
+5-edge-chat.facebook.com
+edge-mqtt.facebook.com
+mqtt.c10r.facebook.com
+mqtt-mini.facebook.com
+star.facebook.com
+star.c10r.facebook.com
+star-mini.c10r.facebook.com
+z-m.c10r.facebook.com
+z-m-graph.facebook.com
