@@ -23,8 +23,6 @@ clo.footprintdns.com
 companymanager.microsoftonline.com
 compass-ssl.microsoft.com
 device.login.microsoftonline.com
-graph.microsoft.com
-graph.windows.net
 home.office.com
 keydelivery.mediaservices.windows.net
 login-us.microsoftonline.com
