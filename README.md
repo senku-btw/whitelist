@@ -18,3 +18,4 @@
 - [x] https://github.com/bubusan80/whitelist_hosting_public
 - [ ] https://github.com/nbarari/domain-allowlist
 - [x] https://github.com/gioxx/ph-whitelist
+- [x] https://github.com/mhhakim/pihole-blocklist
