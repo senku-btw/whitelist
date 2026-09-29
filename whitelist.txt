@@ -5,6 +5,7 @@ addons.cdn.mozilla.net
 addons.mozilla.org
 go.pardot.com
 bs.to
+gravatar.com
 stackpath.bootstrapcdn.com
 streamtape.com
 vivo.sx
