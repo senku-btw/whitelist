@@ -122,7 +122,6 @@ eu.wikipedia.com
 extratorrent.cd
 f-droid.org
 f-secure.com
-f.vimeocdn.com
 fastly.net
 fedorapeople.org
 fedoraproject.org
