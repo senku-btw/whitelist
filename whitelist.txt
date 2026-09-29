@@ -194,7 +194,6 @@ intel.com.au
 iplists.firehol.org
 it.wikipedia.com
 jboss.org
-join.vimeo.com
 jp.wikipedia.com
 jsdelivr.net
 launchpad.net
