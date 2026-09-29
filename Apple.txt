@@ -2,6 +2,11 @@ appleid.apple.com
 ax.phobos.apple.com.edgesuite.net
 ocsp.apple.com
 c.apple.com
+appleid.apple.com
+captive.apple.com
+gsp1.apple.com
+www.apple.com
+www.appleiphonecell.com
 feedbackws.icloud.com
 amp-api-edge.apps.apple.com
 amp-api-search-edge.apps.apple.com
