@@ -42,3 +42,10 @@ scontent.xx.fbcdn.net
 star-mini.c10r.facebook.com
 star.c10r.facebook.com
 upload.facebook.com
+upload.facebook.com
+rupload.facebook.com
+bigzipfiles.facebook.com
+fbcdn.net
+static.xx.fbcdn.net
+scontent.xx.fbcdn.net
+z-m-scontent.xx.fbcdn.net
