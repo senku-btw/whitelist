@@ -308,7 +308,7 @@ def _get_or_create_default_group(cursor: sqlite3.Cursor, timestamp: int) -> int:
     cursor.execute('SELECT id FROM "group" WHERE name = ?', (DEFAULT_GROUP,))
     default_row = cursor.fetchone()
     if default_row:
-        return default_row[0]
+        return int(default_row[0])
 
     cursor.execute(
         'INSERT INTO "group" (name, date_added, date_modified, description) '
@@ -316,7 +316,11 @@ def _get_or_create_default_group(cursor: sqlite3.Cursor, timestamp: int) -> int:
         (DEFAULT_GROUP, timestamp, timestamp, ""),
     )
     print(f"Created missing '{DEFAULT_GROUP}' group.")
-    return cursor.lastrowid
+    
+    if cursor.lastrowid is None:
+        raise RuntimeError("Failed to retrieve inserted group ID from database.")
+        
+    return int(cursor.lastrowid)
 
 
 def _get_eligible_group_comments(cursor: sqlite3.Cursor) -> Set[str]:
