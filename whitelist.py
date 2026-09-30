@@ -482,31 +482,101 @@ def restore_client_mappings(
     client_backup: Dict[int, List[str]],
     group_dict: Dict[str, int],
 ):
-    """Re-links clients to Default group and any newly recreated matching groups."""
+    """
+    Restores client-to-group mappings.
+
+    Normal clients receive Default and any previously configured,
+    recreated non-Default groups.
+
+    The keepalived-healthcheck client at 172.29.0.1 is assigned
+    exclusively to block-everything.
+    """
     default_group_id = group_dict[DEFAULT_GROUP]
+    block_everything_id = group_dict.get("block-everything")
+
+    # Locate keepalived-healthcheck by IP address.
+    cursor.execute(
+        "SELECT id FROM client WHERE ip = ?",
+        ("172.29.0.1",),
+    )
+    keepalived_row = cursor.fetchone()
+
+    keepalived_client_id = (
+        keepalived_row[0] if keepalived_row is not None else None
+    )
+
+    # keepalived-healthcheck must never retain Default or any other group.
+    if keepalived_client_id is not None:
+        if block_everything_id is None:
+            raise RuntimeError(
+                "The 'block-everything' group was not created or found; "
+                "cannot safely configure keepalived-healthcheck."
+            )
+
+        cursor.execute(
+            "DELETE FROM client_by_group WHERE client_id = ?",
+            (keepalived_client_id,),
+        )
+
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO client_by_group
+                (client_id, group_id)
+            VALUES (?, ?)
+            """,
+            (keepalived_client_id, block_everything_id),
+        )
+
+        print(
+            "Assigned keepalived-healthcheck (172.29.0.1) "
+            "exclusively to 'block-everything'."
+        )
+
+    # Every normal client receives Default.
     mapping_inserts = set()
 
     cursor.execute("SELECT id FROM client")
     for (client_id,) in cursor.fetchall():
+        if client_id == keepalived_client_id:
+            continue
+
         mapping_inserts.add((client_id, default_group_id))
 
+    # Restore previously configured non-Default groups for normal clients.
     for client_id, group_names in client_backup.items():
+        if client_id == keepalived_client_id:
+            continue
+
         for group_name in group_names:
             cleaned_name = clean_to_title_case(group_name)
-            if cleaned_name in group_dict and cleaned_name != DEFAULT_GROUP:
-                mapping_inserts.add((client_id, group_dict[cleaned_name]))
 
+            if (
+                cleaned_name in group_dict
+                and cleaned_name != DEFAULT_GROUP
+                and cleaned_name != "block-everything"
+            ):
+                mapping_inserts.add(
+                    (client_id, group_dict[cleaned_name])
+                )
+
+    # Apply mappings for normal clients.
     if mapping_inserts:
         cursor.executemany(
-            "INSERT OR IGNORE INTO client_by_group (client_id, group_id) "
-            "VALUES (?, ?)",
+            """
+            INSERT OR IGNORE INTO client_by_group
+                (client_id, group_id)
+            VALUES (?, ?)
+            """,
             list(mapping_inserts),
         )
-        unique_clients = len(set(c[0] for c in mapping_inserts))
+
+        unique_clients = len({client_id for client_id, _ in mapping_inserts})
+
         print(
             "Restored saved configurations and enforced Default fallback "
-            f"for {unique_clients} client(s)."
+            f"for {unique_clients} normal client(s)."
         )
+       
 
 
 # ==============================================================================
