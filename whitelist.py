@@ -576,7 +576,7 @@ def restore_client_mappings(
             "Restored saved configurations and enforced Default fallback "
             f"for {unique_clients} normal client(s)."
         )
-       
+
 
 
 # ==============================================================================
