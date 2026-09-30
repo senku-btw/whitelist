@@ -303,41 +303,24 @@ def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
     return dict(client_backup)
 
 
-def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
-    """
-    Purges non-Default groups and mappings, recreates missing groups based on
-    whitelist comments that appear at least MIN_GROUP_OCCURRENCES times,
-    attaches the '.*' regex blacklist to 'block-everything', and returns group mapping.
-    """
-    current_timestamp = int(time.time())
-
+def _get_or_create_default_group(cursor: sqlite3.Cursor, timestamp: int) -> int:
+    """Retrieves or creates the Default group and returns its ID."""
     cursor.execute('SELECT id FROM "group" WHERE name = ?', (DEFAULT_GROUP,))
     default_row = cursor.fetchone()
-
     if default_row:
-        default_group_id = default_row[0]
-    else:
-        cursor.execute(
-            'INSERT INTO "group" (name, date_added, date_modified, description) '
-            "VALUES (?, ?, ?, ?)",
-            (DEFAULT_GROUP, current_timestamp, current_timestamp, ""),
-        )
-        default_group_id = cursor.lastrowid
-        print(f"Created missing '{DEFAULT_GROUP}' group.")
+        return default_row[0]
 
     cursor.execute(
-        "DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,)
+        'INSERT INTO "group" (name, date_added, date_modified, description) '
+        "VALUES (?, ?, ?, ?)",
+        (DEFAULT_GROUP, timestamp, timestamp, ""),
     )
-    cursor.execute(
-        "DELETE FROM client_by_group WHERE group_id != ?", (default_group_id,)
-    )
-    cursor.execute(
-        "DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,)
-    )
+    print(f"Created missing '{DEFAULT_GROUP}' group.")
+    return cursor.lastrowid
 
-    cursor.execute('DELETE FROM "group" WHERE id != ?', (default_group_id,))
-    print("Purged all previous non-Default groups and associated mappings.")
 
+def _get_eligible_group_comments(cursor: sqlite3.Cursor) -> Set[str]:
+    """Counts whitelist domain comment occurrences and returns categories meeting the threshold."""
     cursor.execute(
         "SELECT comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
@@ -358,12 +341,36 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             ):
                 comment_counts[cleaned_comment] += 1
 
-    whitelisted_comments = {
+    return {
         comment
         for comment, count in comment_counts.items()
         if count >= MIN_GROUP_OCCURRENCES
     }
 
+
+def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
+    """
+    Purges non-Default groups and mappings, recreates missing groups based on
+    whitelist comments that appear at least MIN_GROUP_OCCURRENCES times,
+    attaches the '.*' regex blacklist to 'block-everything', and returns group mapping.
+    """
+    current_timestamp = int(time.time())
+    default_group_id = _get_or_create_default_group(cursor, current_timestamp)
+
+    cursor.execute(
+        "DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,)
+    )
+    cursor.execute(
+        "DELETE FROM client_by_group WHERE group_id != ?", (default_group_id,)
+    )
+    cursor.execute(
+        "DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,)
+    )
+
+    cursor.execute('DELETE FROM "group" WHERE id != ?', (default_group_id,))
+    print("Purged all previous non-Default groups and associated mappings.")
+
+    whitelisted_comments = _get_eligible_group_comments(cursor)
     group_dict = {DEFAULT_GROUP: default_group_id}
 
     if whitelisted_comments:
