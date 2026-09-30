@@ -34,7 +34,7 @@ WHITELIST_TXT_PATH = SCRIPT_DIR / "whitelist.txt"
 WHITELISTS_DIR = SCRIPT_DIR / "whitelists"
 
 # --- Group & Whitelist Rules ---
-SKIPPED_GROUPS = frozenset(["Hosts"])
+SKIPPED_GROUPS = frozenset(["Hosts", "block-everything"])
 DEFAULT_GROUP = "Default"
 MIN_GROUP_OCCURRENCES = 2
 IMMUTABLE_CATEGORIES = frozenset(["hosts", "Facebook"])
@@ -401,9 +401,21 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             f"(met threshold of {MIN_GROUP_OCCURRENCES}+ occurrences)."
         )
 
-    # Attach the ".*" blacklist regex entry to block-everything if the group exists
-    if "block-everything" in group_dict:
-        block_everything_id = group_dict["block-everything"]
+    # Recreate block-everything manually in gravity.db if missing, and attach '.*' blacklist regex
+    cursor.execute('SELECT id FROM "group" WHERE name = ?', ("block-everything",))
+    block_row = cursor.fetchone()
+    if block_row:
+        block_everything_id = block_row[0]
+    else:
+        cursor.execute(
+            'INSERT INTO "group" (name, date_added, date_modified, description) '
+            "VALUES (?, ?, ?, ?)",
+            ("block-everything", current_timestamp, current_timestamp, ""),
+        )
+        block_everything_id = cursor.lastrowid
+
+    if block_everything_id is not None:
+        group_dict["block-everything"] = block_everything_id
         cursor.execute(
             "SELECT id FROM domainlist WHERE domain = '.*' AND type IN (1, 3)"
         )
@@ -574,6 +586,9 @@ def _write_category_files(
 ) -> None:
     """Writes categorized domains and their subcategories to individual text files."""
     for category, subcategories in categories.items():
+        if category == "block-everything":
+            continue
+
         file_name = f"{sanitize_filename(category)}.txt"
         file_path = tmp_dir / file_name
 
