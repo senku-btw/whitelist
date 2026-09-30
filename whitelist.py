@@ -6,8 +6,9 @@ Executes a unified pipeline:
    deduplicating and sorting them alphabetically.
 2. Rebuilds Pi-hole groups based on regular domain comments (min 2 occurrences)
    and maps domains/clients, ignoring default web query log entries.
-3. Extracts categorized whitelists from gravity.db into individual files under whitelists/.
-4. Reloads Pi-hole FTL and pushes all changes to Git.
+3. Attaches the ".*" regex blacklist to the "block-everything" group if recreated.
+4. Extracts categorized whitelists from gravity.db into individual files under whitelists/.
+5. Reloads Pi-hole FTL and pushes all changes to Git.
 """
 
 import fcntl
@@ -306,7 +307,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
     Purges non-Default groups and mappings, recreates missing groups based on
     whitelist comments that appear at least MIN_GROUP_OCCURRENCES times,
-    and returns a mapping of group names to IDs.
+    attaches the '.*' regex blacklist to 'block-everything', and returns group mapping.
     """
     current_timestamp = int(time.time())
 
@@ -388,6 +389,20 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             f"Successfully recreated {len(whitelisted_comments)} group(s) "
             f"(met threshold of {MIN_GROUP_OCCURRENCES}+ occurrences)."
         )
+
+    # Attach the ".*" blacklist regex entry to block-everything if the group exists
+    if "block-everything" in group_dict:
+        block_everything_id = group_dict["block-everything"]
+        cursor.execute(
+            "SELECT id FROM domainlist WHERE domain = '.*' AND type IN (1, 3)"
+        )
+        for (domain_id,) in cursor.fetchall():
+            cursor.execute(
+                "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) "
+                "VALUES (?, ?)",
+                (domain_id, block_everything_id),
+            )
+        print("Linked '.*' regex blacklist entry to 'block-everything' group.")
 
     return group_dict
 
