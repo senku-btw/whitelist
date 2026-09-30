@@ -85,6 +85,7 @@ talks.l.google.com
 talkx.l.google.com
 translate.google.com
 video.google.com
+www.google.com
 xmpp-server.l.google.com
 youtube.l.google.com
 ytimg.l.google.com
