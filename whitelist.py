@@ -316,10 +316,10 @@ def _get_or_create_default_group(cursor: sqlite3.Cursor, timestamp: int) -> int:
         (DEFAULT_GROUP, timestamp, timestamp, ""),
     )
     print(f"Created missing '{DEFAULT_GROUP}' group.")
-    
+
     if cursor.lastrowid is None:
         raise RuntimeError("Failed to retrieve inserted group ID from database.")
-        
+
     return int(cursor.lastrowid)
 
 
