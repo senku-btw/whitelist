@@ -75,6 +75,7 @@ def sanitize_filename(filename: str) -> str:
         return "unnamed_category"
 
     sanitized = re.sub(r'[\\/*?:"<>|]', "", filename)
+    # Replaces spaces with underscores to create patterns like "Microsoft_Windows"
     sanitized = sanitized.strip().replace(" ", "_")
     return sanitized if sanitized else "unnamed_category"
 
@@ -111,12 +112,17 @@ def clean_to_title_case(text: str) -> str:
     if not clean:
         return ""
 
+    # Preserve "block-everything" exact comment casing and naming
+    if clean.lower() in ("block-everything", "block-eveything"):
+        return "block-everything"
+
     parts = re.split(r"(\([^\)]*\))", clean)
     processed = []
     for part in parts:
         if part.startswith("(") and part.endswith(")"):
             processed.append(part)
         else:
+            # .title() automatically capitalizes the first letter of each word
             processed.append(part.title())
 
     result = "".join(processed)
