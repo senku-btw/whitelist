@@ -488,34 +488,34 @@ def restore_client_mappings(
     Normal clients receive Default and any previously configured,
     recreated non-Default groups.
 
-    The keepalived-healthcheck client at 172.29.0.1 is assigned
+    The primary.hole client at 192.168.2.10 is assigned
     exclusively to block-everything.
     """
     default_group_id = group_dict[DEFAULT_GROUP]
     block_everything_id = group_dict.get("block-everything")
 
-    # Locate keepalived-healthcheck by IP address.
+    # Locate primary.hole by IP address and hostname
     cursor.execute(
-        "SELECT id FROM client WHERE ip = ?",
-        ("172.29.0.1",),
+        """
+        SELECT id FROM client 
+        WHERE ip = '192.168.2.10' AND name = 'primary.hole'
+        """
     )
-    keepalived_row = cursor.fetchone()
+    primary_row = cursor.fetchone()
 
-    keepalived_client_id = (
-        keepalived_row[0] if keepalived_row is not None else None
-    )
+    primary_client_id = primary_row[0] if primary_row is not None else None
 
-    # keepalived-healthcheck must never retain Default or any other group.
-    if keepalived_client_id is not None:
+    # primary.hole must never retain Default or any other group.
+    if primary_client_id is not None:
         if block_everything_id is None:
             raise RuntimeError(
                 "The 'block-everything' group was not created or found; "
-                "cannot safely configure keepalived-healthcheck."
+                "cannot safely configure primary.hole."
             )
 
         cursor.execute(
             "DELETE FROM client_by_group WHERE client_id = ?",
-            (keepalived_client_id,),
+            (primary_client_id,),
         )
 
         cursor.execute(
@@ -524,11 +524,11 @@ def restore_client_mappings(
                 (client_id, group_id)
             VALUES (?, ?)
             """,
-            (keepalived_client_id, block_everything_id),
+            (primary_client_id, block_everything_id),
         )
 
         print(
-            "Assigned keepalived-healthcheck (172.29.0.1) "
+            "Assigned primary.hole (192.168.2.10) "
             "exclusively to 'block-everything'."
         )
 
@@ -537,14 +537,14 @@ def restore_client_mappings(
 
     cursor.execute("SELECT id FROM client")
     for (client_id,) in cursor.fetchall():
-        if client_id == keepalived_client_id:
+        if client_id == primary_client_id:
             continue
 
         mapping_inserts.add((client_id, default_group_id))
 
     # Restore previously configured non-Default groups for normal clients.
     for client_id, group_names in client_backup.items():
-        if client_id == keepalived_client_id:
+        if client_id == primary_client_id:
             continue
 
         for group_name in group_names:
