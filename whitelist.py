@@ -6,7 +6,7 @@ Executes a unified pipeline:
    deduplicating and sorting them alphabetically.
 2. Rebuilds Pi-hole groups based on regular domain comments (min 2 occurrences)
    and maps domains/clients, ignoring default web query log entries.
-3. Attaches the ".*" and "^.*$" regex blacklists to the "block-everything" group if recreated.
+3. Attaches specific regex blacklist and whitelist entries to the "block-everything" group if recreated.
 4. Extracts categorized whitelists from gravity.db into individual files under whitelists/.
 5. Reloads Pi-hole FTL and pushes all changes to Git.
 """
@@ -356,7 +356,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
     """
     Purges non-Default groups and mappings, recreates missing groups based on
     whitelist comments that appear at least MIN_GROUP_OCCURRENCES times,
-    attaches the '.*' and '^.*$' regex blacklists to 'block-everything', and returns group mapping.
+    attaches default regex entries to 'block-everything', and returns group mapping.
     """
     current_timestamp = int(time.time())
     default_group_id = _get_or_create_default_group(cursor, current_timestamp)
@@ -401,7 +401,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
             f"(met threshold of {MIN_GROUP_OCCURRENCES}+ occurrences)."
         )
 
-    # Recreate block-everything manually in gravity.db if missing, and attach regex blacklists
+    # Recreate block-everything manually in gravity.db if missing, and attach regex rules
     cursor.execute('SELECT id FROM "group" WHERE name = ?', ("block-everything",))
     block_row = cursor.fetchone()
     if block_row:
@@ -416,8 +416,14 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
 
     if block_everything_id is not None:
         group_dict["block-everything"] = block_everything_id
+        
+        # Attach regex blacklists and whitelists to block-everything
         cursor.execute(
-            "SELECT id FROM domainlist WHERE domain IN ('.*', '^.*$') AND type IN (1, 3)"
+            """
+            SELECT id FROM domainlist 
+            WHERE domain IN ('.*', '^.*$', '(^|\\.)in-addr\\.arpa$', '(^|.*\\.)in-addr\\.arpa$') 
+              AND type IN (0, 1, 2, 3)
+            """
         )
         for (domain_id,) in cursor.fetchall():
             cursor.execute(
@@ -426,7 +432,8 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
                 (domain_id, block_everything_id),
             )
         print(
-            "Linked '.*' and '^.*$' regex blacklist entries to 'block-everything' group."
+            "Linked regex blacklist and whitelist entries (including in-addr.arpa) "
+            "to 'block-everything' group."
         )
 
     return group_dict
