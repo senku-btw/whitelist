@@ -425,7 +425,9 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
                 "VALUES (?, ?)",
                 (domain_id, block_everything_id),
             )
-        print("Linked '.*' and '^.*$' regex blacklist entries to 'block-everything' group.")
+        print(
+            "Linked '.*' and '^.*$' regex blacklist entries to 'block-everything' group."
+        )
 
     return group_dict
 
@@ -555,9 +557,7 @@ def restore_client_mappings(
                 and cleaned_name != DEFAULT_GROUP
                 and cleaned_name != "block-everything"
             ):
-                mapping_inserts.add(
-                    (client_id, group_dict[cleaned_name])
-                )
+                mapping_inserts.add((client_id, group_dict[cleaned_name]))
 
     # Apply mappings for normal clients.
     if mapping_inserts:
@@ -576,7 +576,6 @@ def restore_client_mappings(
             "Restored saved configurations and enforced Default fallback "
             f"for {unique_clients} normal client(s)."
         )
-
 
 
 # ==============================================================================
