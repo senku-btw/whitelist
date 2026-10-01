@@ -12,6 +12,7 @@ aspmx.l.google.com
 aspmx2.googlemail.com
 aspmx3.googlemail.com
 books.google.com
+c.pki.goog
 chatenabled.mail.google.com
 chrome.cloudflare-dns.com
 chromesyncentities-pa.googleapis.com
@@ -45,7 +46,6 @@ fonts.gstatic.com
 gmail.com
 gmail.google.com
 google.com
-google.it
 googleapis.l.google.com
 googlehosted.l.googleusercontent.com
 googleusercontent.com
