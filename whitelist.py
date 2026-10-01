@@ -1,13 +1,17 @@
 """
-Combined Autonomous Pi-hole Group Manager, Whitelist Pipeline, and Git Sync.
+Combined Autonomous Pi-hole Group Manager, Whitelist Pipeline,
+and Git Sync.
 
 Executes a unified pipeline:
-1. Migrates blank-comment domains from the Default group in gravity.db into whitelist.txt,
-   deduplicating and sorting them alphabetically.
-2. Rebuilds Pi-hole groups based on regular domain comments (min 2 occurrences)
-   and maps domains/clients, ignoring default web query log entries.
-3. Attaches specific regex blacklist and whitelist entries to the "block-everything" group if recreated.
-4. Extracts categorized whitelists from gravity.db into individual files under whitelists/.
+1. Migrates blank-comment domains from the Default group in gravity.db
+   into whitelist.txt, deduplicating and sorting them alphabetically.
+2. Rebuilds Pi-hole groups based on regular domain comments
+   (min 2 occurrences) and maps domains/clients, ignoring default
+   web query log entries.
+3. Attaches specific regex blacklist and whitelist entries to the
+   "block-everything" group if recreated.
+4. Extracts categorized whitelists from gravity.db into individual
+   files under whitelists/.
 5. Reloads Pi-hole FTL and pushes all changes to Git.
 """
 
@@ -416,7 +420,7 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
 
     if block_everything_id is not None:
         group_dict["block-everything"] = block_everything_id
-        
+
         # Attach regex blacklists and whitelists to block-everything
         cursor.execute(
             """
