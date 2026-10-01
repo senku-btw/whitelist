@@ -529,10 +529,7 @@ def restore_client_mappings(
             (primary_client_id, block_everything_id),
         )
 
-        print(
-            "Assigned primary.hole (192.168.2.10) "
-            "exclusively to 'block-everything'."
-        )
+        print("Assigned primary.hole (192.168.2.10) exclusively to 'block-everything'.")
 
     # Every normal client receives Default.
     mapping_inserts = set()
