@@ -23,17 +23,14 @@ archlinux.org
 assets-cdn.github.com
 assets.gitlab-static.net
 assets.vimeo.com
-authy.vimeo.com
 avatars0.githubusercontent.com
 avatars1.githubusercontent.com
 avatars2.githubusercontent.com
 avatars3.githubusercontent.com
 bbc.co.uk
 bbc.com
-bigtorrent.org
 bit.ly
 bitdefender.net
-bittorrent.am
 blocklist.kowabit.de
 bs.to
 bugzilla.mozilla.org
@@ -78,10 +75,8 @@ cz.wikipedia.com
 d.dropbox.com
 dash.cloudflare.com
 dashboard.snapcraft.io
-dashbox.soundcloud.com
 db.tt
 dbl.oisd.nl
-dc.services.visualstudio.com
 de.wikipedia.com
 debian.map.fastlydns.net
 debian.org
@@ -120,7 +115,6 @@ en.m.wikipedia.org
 en.wikipedia.com
 es.wikipedia.com
 eu.wikipedia.com
-extratorrent.cd
 f-droid.org
 f-secure.com
 fastly.net
@@ -132,8 +126,6 @@ fi.m.wikipedia.com
 fi.wikipedia.com
 filterlists.com
 filters.adtidy.org
-fonts.googleapis.com
-fonts.gstatic.com
 freebsd.org
 ftp.cdnrobot.xyz
 ftp.chocolatey.org
@@ -163,10 +155,8 @@ githubusercontent.com
 gitlab.com
 gitlab.io
 gitter.im
-go.pardot.com
 gravatar.com
 greasyfork.org
-gstatic.com
 guardianproject.gitlab.io
 guardianproject.info
 gumtree.com
@@ -190,8 +180,6 @@ images-na.ssl-images-amazon.com
 imagesak.secureserver.net
 img.xda-developers.com
 imgix.net
-info.cloudflare.com
-input.mozilla.org
 intel.com
 intel.com.au
 iplists.firehol.org
@@ -204,7 +192,6 @@ linuxmint.com
 m.codemasters.com
 m.media-amazon.com
 m.stripe.com
-m.stripe.network
 mail.protonmail.com
 mail.xda-developers.com
 malwarebytes.com
@@ -230,7 +217,6 @@ ns1.dropbox.com
 ns2.dropbox.com
 nuget.org
 nvidia.com
-nvidia.com.ssl.sc.omtrdc.net
 nz.static.mega.co.nz
 obfusgated.com
 ocsp.apple.com
@@ -283,7 +269,6 @@ softwarecollections.org
 someonewhocares.org
 sourceforge.net
 speedtest.net
-stackpath.bootstrapcdn.com
 static.opensuse.org
 static.oracle.com
 staticcdn.duckduckgo.com
@@ -317,12 +302,6 @@ thetvdb.com
 thumbs.ebaystatic.com
 thumbs1.ebaystatic.com
 tiles.services.mozilla.com
-torrentprivacy.com
-torrentz2.eu
-tracker.btzoo.eu
-tracker.tfile.me
-tracker.trackerfix.com
-tracker.zond.org
 ubuntu.com
 update.code.visualstudio.com
 updates-cdn.bravesoftware.com
