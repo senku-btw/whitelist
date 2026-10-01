@@ -498,7 +498,7 @@ def restore_client_mappings(
     cursor.execute(
         """
         SELECT id FROM client 
-        WHERE ip = '192.168.2.10' AND name = 'primary.hole'
+        WHERE ip = '192.168.2.10' AND comment = 'primary.hole'
         """
     )
     primary_row = cursor.fetchone()
