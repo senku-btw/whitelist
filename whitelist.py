@@ -765,7 +765,8 @@ def reload_pihole_engine():
 
 def git_sync(repo_dir: Path) -> None:
     """Stages all changes, commits with a mixed hex ID, and pushes upstream."""
-    if not (repo_dir / ".git").is_dir():
+    file_path_check = repo_dir / ".git"
+    if not file_path_check.is_dir():
         print(f"Error: {repo_dir} is not a Git repository.")
         return
 
