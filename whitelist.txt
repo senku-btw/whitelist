@@ -350,5 +350,6 @@ wordpress.com
 wordpress.org
 www.github.developerdan.com
 www.gravatar.com
+www.xda-developers.com
 yts.ag
 zeustracker.abuse.ch
