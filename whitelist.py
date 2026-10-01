@@ -501,11 +501,18 @@ def restore_client_mappings(
     Normal clients receive Default and any previously configured,
     recreated non-Default groups.
 
-    The primary.hole client at 192.168.2.10 is assigned
-    exclusively to block-everything.
+    The primary.hole client at 192.168.2.10 and localhost at 127.0.0.1
+    are assigned exclusively to block-everything.
     """
     default_group_id = group_dict[DEFAULT_GROUP]
     block_everything_id = group_dict.get("block-everything")
+
+    # Ensure block-everything is available if special clients need configuration
+    if block_everything_id is None:
+        raise RuntimeError(
+            "The 'block-everything' group was not created or found; "
+            "cannot safely configure restricted clients."
+        )
 
     # Locate primary.hole by IP address and hostname
     cursor.execute(
@@ -515,46 +522,71 @@ def restore_client_mappings(
         """
     )
     primary_row = cursor.fetchone()
-
     primary_client_id = primary_row[0] if primary_row is not None else None
 
-    # primary.hole must never retain Default or any other group.
-    if primary_client_id is not None:
-        if block_everything_id is None:
-            raise RuntimeError(
-                "The 'block-everything' group was not created or found; "
-                "cannot safely configure primary.hole."
-            )
+    # Locate localhost client by IP 127.0.0.1 or create/manage it
+    cursor.execute(
+        """
+        SELECT id FROM client
+        WHERE ip = '127.0.0.1'
+        """
+    )
+    localhost_row = cursor.fetchone()
+    localhost_client_id = localhost_row[0] if localhost_row is not None else None
 
-        cursor.execute(
-            "DELETE FROM client_by_group WHERE client_id = ?",
-            (primary_client_id,),
-        )
-
+    if localhost_client_id is None:
+        current_timestamp = int(time.time())
         cursor.execute(
             """
-            INSERT OR IGNORE INTO client_by_group
-                (client_id, group_id)
-            VALUES (?, ?)
+            INSERT INTO client (ip, mac, date_added, date_modified, comment)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (primary_client_id, block_everything_id),
+            ("127.0.0.1", "", current_timestamp, current_timestamp, "localhost"),
+        )
+        localhost_client_id = cursor.lastrowid
+        print("Created localhost client (127.0.0.1) in database.")
+    else:
+        # Update comment if needed
+        cursor.execute(
+            "UPDATE client SET comment = 'localhost' WHERE id = ?",
+            (localhost_client_id,),
         )
 
+    restricted_client_ids = {
+        cid for cid in (primary_client_id, localhost_client_id) if cid is not None
+    }
+
+    # Configure restricted clients exclusively for block-everything
+    for client_id in restricted_client_ids:
+        cursor.execute(
+            "DELETE FROM client_by_group WHERE client_id = ?",
+            (client_id,),
+        )
+        cursor.execute(
+            """
+            INSERT OR IGNORE INTO client_by_group (client_id, group_id)
+            VALUES (?, ?)
+            """,
+            (client_id, block_everything_id),
+        )
+
+    if primary_client_id is not None:
         print("Assigned primary.hole (192.168.2.10) exclusively to 'block-everything'.")
+    print("Assigned localhost (127.0.0.1) exclusively to 'block-everything'.")
 
     # Every normal client receives Default.
     mapping_inserts = set()
 
     cursor.execute("SELECT id FROM client")
     for (client_id,) in cursor.fetchall():
-        if client_id == primary_client_id:
+        if client_id in restricted_client_ids:
             continue
 
         mapping_inserts.add((client_id, default_group_id))
 
     # Restore previously configured non-Default groups for normal clients.
     for client_id, group_names in client_backup.items():
-        if client_id == primary_client_id:
+        if client_id in restricted_client_ids:
             continue
 
         for group_name in group_names:
