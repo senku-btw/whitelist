@@ -35,6 +35,7 @@ developers.google.com
 device-provisioning.googleapis.com
 docs.google.com
 drive.google.com
+encrypted-tbn2.gstatic.com
 firebaseinstallations.googleapis.com
 firebaselogging-pa.googleapis.com
 firebaseremoteconfig.googleapis.com
