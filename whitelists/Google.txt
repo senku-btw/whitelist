@@ -74,6 +74,7 @@ pki-goog.l.google.com
 redirector.gvt1.com
 redirector.gvt2.com
 script.google.com
+securetoken.googleapis.com
 security.google.com
 ssl.gstatic.com
 storage.cloud.google.com

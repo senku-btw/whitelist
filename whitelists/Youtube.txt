@@ -4,11 +4,13 @@ history.google.com
 i.ytimg.com
 i1.ytimg.com
 img.youtube.com
+m.youtube.com
 manifest.googlevideo.com
 oauthaccountmanager.googleapis.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
+securetoken.googleapis.com
 sponsor.ajay.app
 tv.youtube.com
 video-stats.l.google.com
