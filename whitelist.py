@@ -494,7 +494,7 @@ def restore_client_mappings(
     cursor: sqlite3.Cursor,
     client_backup: Dict[int, List[str]],
     group_dict: Dict[str, int],
-):
+):  # pylint: disable=too-many-locals
     """
     Restores client-to-group mappings.
 
