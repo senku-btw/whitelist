@@ -424,8 +424,8 @@ def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
         # Attach regex blacklists and whitelists to block-everything
         cursor.execute(
             """
-            SELECT id FROM domainlist 
-            WHERE domain IN ('.*', '^.*$', '(^|\\.)in-addr\\.arpa$', '(^|.*\\.)in-addr\\.arpa$') 
+            SELECT id FROM domainlist
+            WHERE domain IN ('.*', '^.*$', '(^|\\.)in-addr\\.arpa$', '(^|.*\\.)in-addr\\.arpa$')
               AND type IN (0, 1, 2, 3)
             """
         )
