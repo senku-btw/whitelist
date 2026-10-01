@@ -499,7 +499,7 @@ def restore_client_mappings(
     # Locate primary.hole by IP address and hostname
     cursor.execute(
         """
-        SELECT id FROM client 
+        SELECT id FROM client
         WHERE ip = '192.168.2.10' AND comment = 'primary.hole'
         """
     )
