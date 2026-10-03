@@ -5,7 +5,6 @@ gateway.reddit.com
 gql.reddit.com
 i.redd.it
 i.reddit.com
-nsfw.reddit.com
 oauth.reddit.com
 preview.redd.it
 redd.it
