@@ -7,7 +7,7 @@ import logging
 import sys
 from pathlib import Path
 
-# Configure logging to output only to stdout (RAM/console) to satisfy the "no logs on disk" requirement.
+# Configure logging to output only to stdout (RAM/console)
 logger = logging.getLogger("PiholeWhitelistManager")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
@@ -16,13 +16,15 @@ handler.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(handler)
 
-def get_base_paths() -> tuple[Path, Path, Path]:
+def get_base_paths() -> tuple[Path, Path, Path, Path]:
     db_path = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
     base_dir = db_path.parent
     txt_path = base_dir / "whitelist.txt"
+    # Dynamically resolve the directory where this script is located for git operations
+    repo_dir = Path(__file__).resolve().parent 
     
     assert base_dir.exists(), f"Base directory does not exist: {base_dir}"
-    return db_path, base_dir, txt_path
+    return db_path, base_dir, txt_path, repo_dir
 
 def sanitize_domain(domain: str) -> str:
     assert isinstance(domain, str), "Domain must be a string"
@@ -261,17 +263,17 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
 
 # --- Step 4 ---
 
-def push_to_github(base_dir: Path) -> None:
-    logger.info("--- Starting Step 4: Pushing to GitHub ---")
+def push_to_github(repo_dir: Path) -> None:
+    logger.info(f"--- Starting Step 4: Pushing to GitHub from {repo_dir} ---")
     commit_msg = secrets.token_hex(4)
-    logger.info(f"Generated secure commit message.")
+    logger.info(f"Generated secure commit message: {commit_msg}")
     
     try:
-        assert (base_dir / ".git").exists(), "Not a git repository, cannot push to GitHub"
+        assert (repo_dir / ".git").exists(), f"Not a git repository: {repo_dir}"
         
-        subprocess.run(["git", "add", "."], cwd=base_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["git", "commit", "-m", commit_msg], cwd=base_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["git", "push"], cwd=base_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(["git", "push"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         logger.info("Successfully pushed changes to GitHub.")
     except subprocess.CalledProcessError as e:
@@ -286,20 +288,22 @@ def push_to_github(base_dir: Path) -> None:
 def main() -> None:
     logger.info("=== Pi-hole Whitelist Automation Started ===")
     try:
-        db_path, base_dir, txt_path = get_base_paths()
+        db_path, base_dir, txt_path, repo_dir = get_base_paths()
         
         process_step1(db_path, txt_path)
         
         categories = extract_categorized_whitelists(db_path)
         if not categories:
             logger.info("No valid categories found in Step 2. Ending execution early to prevent wiping groups.")
+            # Note: If no categories are generated, Git commit will push an empty update if other files changed.
+            push_to_github(repo_dir)
             return
             
         write_category_files(base_dir, categories)
         rebuild_db_groups(db_path, categories)
         
         restart_pihole()
-        push_to_github(base_dir)
+        push_to_github(repo_dir)
         
         logger.info("=== Pi-hole Whitelist Automation Completed Successfully ===")
         
