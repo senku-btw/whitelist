@@ -16,15 +16,18 @@ handler.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(handler)
 
-def get_base_paths() -> tuple[Path, Path, Path, Path]:
+def get_base_paths() -> tuple[Path, Path, Path]:
     db_path = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
-    base_dir = db_path.parent
-    txt_path = base_dir / "whitelist.txt"
-    # Dynamically resolve the directory where this script is located for git operations
+    
+    # Dynamically resolve the directory where this script is located (the Git repository root)
     repo_dir = Path(__file__).resolve().parent 
     
-    assert base_dir.exists(), f"Base directory does not exist: {base_dir}"
-    return db_path, base_dir, txt_path, repo_dir
+    # All target files and folders must be in the script's repository directory
+    txt_path = repo_dir / "whitelist.txt"
+    
+    assert db_path.exists(), f"Pi-hole database does not exist: {db_path}"
+    assert repo_dir.exists(), f"Repository directory does not exist: {repo_dir}"
+    return db_path, txt_path, repo_dir
 
 def sanitize_domain(domain: str) -> str:
     assert isinstance(domain, str), "Domain must be a string"
@@ -65,7 +68,6 @@ def execute_db_read(db_path: Path, query: str, params: tuple = ()) -> list[tuple
 def execute_db_write(db_path: Path, queries: tuple[tuple[str, list[tuple]], ...]) -> None:
     assert db_path.exists(), f"Database not found at {db_path}"
     try:
-        # The context manager ensures atomicity: commits on success, rolls back on exception
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             for query, params in queries:
@@ -96,7 +98,7 @@ def fetch_step1_db_entries(db_path: Path) -> frozenset[str]:
 def read_whitelist_txt(txt_path: Path) -> frozenset[str]:
     logger.info(f"Reading existing whitelist file at {txt_path}...")
     if not txt_path.exists():
-        logger.info("whitelist.txt does not exist. Returning empty set.")
+        logger.info("whitelist.txt does not exist in script directory. Returning empty set.")
         return frozenset()
     
     try:
@@ -118,9 +120,8 @@ def write_combined_whitelist(txt_path: Path, combined_entries: frozenset[str]) -
         with open(tmp_path, 'w') as f:
             for entry in sorted_entries:
                 f.write(f"{entry}\n")
-        # Atomic replacement
         os.replace(tmp_path, txt_path)
-        logger.info("Successfully updated whitelist.txt.")
+        logger.info("Successfully updated whitelist.txt in script directory.")
     except IOError as e:
         logger.error(f"Failed to write combined whitelist: {e}")
         if tmp_path.exists():
@@ -189,13 +190,18 @@ def format_filename(category: str) -> str:
     safe_chars = "".join(c for c in category if c.isalnum() or c in (' ', '_', '-')).strip()
     return re.sub(r'\s+', '_', safe_chars)
 
-def write_category_files(base_dir: Path, categories: dict[str, frozenset[str]]) -> None:
-    whitelists_dir = base_dir / "whitelists"
+def write_category_files(repo_dir: Path, categories: dict[str, frozenset[str]]) -> None:
+    # Whitelists folder is created directly in the script's repository directory
+    whitelists_dir = repo_dir / "whitelists"
     logger.info(f"Writing category files to {whitelists_dir}...")
     
     try:
         whitelists_dir.mkdir(exist_ok=True)
         assert whitelists_dir.is_dir() and os.access(whitelists_dir, os.W_OK), "Whitelists directory is not writable"
+        
+        # Clean out existing .txt files in whitelists/ to prevent stale files from persisting in Git
+        for existing_file in whitelists_dir.glob("*.txt"):
+            existing_file.unlink()
         
         for category, domains in categories.items():
             safe_filename = format_filename(category)
@@ -210,7 +216,7 @@ def write_category_files(base_dir: Path, categories: dict[str, frozenset[str]]) 
             
             os.replace(tmp_path, file_path)
             
-        logger.info("Category files generated atomically.")
+        logger.info("Category files generated atomically in script directory.")
     except Exception as e:
         logger.error(f"Failed to write category files: {e}")
         raise
@@ -225,7 +231,6 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
         with sqlite3.connect(db_path) as conn:
             cursor = conn.cursor()
             
-            # Ensure Default group remains intact (id = 0)
             cursor.execute("SELECT id FROM \"group\" WHERE id = 0")
             assert cursor.fetchone() is not None, "CRITICAL: Default group (id=0) missing!"
             
@@ -255,7 +260,6 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
                         domain_group_links.append((d_id, group_map[ic]))
                         
             cursor.executemany("INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)", domain_group_links)
-            # Transaction commits on successful exit of 'with' block
         logger.info("Database groups rebuilt successfully.")
     except sqlite3.Error as e:
         logger.critical(f"Failed to rebuild DB groups (Transaction Rolled Back): {e}")
@@ -265,13 +269,27 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
 
 def push_to_github(repo_dir: Path) -> None:
     logger.info(f"--- Starting Step 4: Pushing to GitHub from {repo_dir} ---")
-    commit_msg = secrets.token_hex(4)
-    logger.info(f"Generated secure commit message: {commit_msg}")
     
     try:
         assert (repo_dir / ".git").exists(), f"Not a git repository: {repo_dir}"
         
         subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        status_check = subprocess.run(
+            ["git", "status", "--porcelain"], 
+            cwd=repo_dir, 
+            capture_output=True, 
+            text=True, 
+            check=True
+        )
+        
+        if not status_check.stdout.strip():
+            logger.info("No modifications detected in the repository. Skipping commit and push.")
+            return
+
+        commit_msg = secrets.token_hex(4)
+        logger.info(f"Generated secure commit message: {commit_msg}")
+        
         subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run(["git", "push"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
@@ -280,7 +298,7 @@ def push_to_github(repo_dir: Path) -> None:
         logger.error(f"Git operation failed: {e}")
         raise
     except Exception as e:
-        logger.error(f"Unexpected error during Git push: {e}")
+        logger.error(f"Unexpected error during Git execution: {e}")
         raise
 
 # --- Main Execution ---
@@ -288,18 +306,17 @@ def push_to_github(repo_dir: Path) -> None:
 def main() -> None:
     logger.info("=== Pi-hole Whitelist Automation Started ===")
     try:
-        db_path, base_dir, txt_path, repo_dir = get_base_paths()
+        db_path, txt_path, repo_dir = get_base_paths()
         
         process_step1(db_path, txt_path)
         
         categories = extract_categorized_whitelists(db_path)
         if not categories:
             logger.info("No valid categories found in Step 2. Ending execution early to prevent wiping groups.")
-            # Note: If no categories are generated, Git commit will push an empty update if other files changed.
             push_to_github(repo_dir)
             return
             
-        write_category_files(base_dir, categories)
+        write_category_files(repo_dir, categories)
         rebuild_db_groups(db_path, categories)
         
         restart_pihole()
@@ -312,7 +329,6 @@ def main() -> None:
     except Exception as e:
         logger.critical(f"Catastrophic Failure: Script terminated early due to {e}")
     finally:
-        # Final cleanup for RAM-only requirement: Flush handlers and close
         logging.shutdown()
 
 if __name__ == "__main__":
