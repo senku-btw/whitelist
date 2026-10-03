@@ -161,11 +161,11 @@ def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
 def process_step1(cfg: AppConfig) -> None:
     """Merge default DB entries into whitelist.txt and remove them from DB."""
     query = """
-        SELECT d.domain 
+        SELECT d.domain
         FROM domainlist d
         JOIN domainlist_by_group dg ON d.id = dg.domainlist_id
         JOIN "group" g ON dg.group_id = g.id
-        WHERE d.type = 0 
+        WHERE d.type = 0
         AND (d.comment IS NULL OR d.comment = '')
         AND g.name = 'Default'
     """
@@ -265,7 +265,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             cursor.execute(
                 """
-                SELECT cbg.client_id, g.name 
+                SELECT cbg.client_id, g.name
                 FROM client_by_group cbg
                 JOIN "group" g ON cbg.group_id = g.id
                 WHERE g.id != 0
