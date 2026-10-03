@@ -52,7 +52,9 @@ class AppConfig:
         if not db_path.is_file():
             raise FileNotFoundError(f"Pi-hole database missing: {db_path}")
         if not repo_dir.is_dir():
-            raise NotADirectoryError(f"Repository directory missing: {repo_dir}")
+            raise NotADirectoryError(
+                f"Repository directory missing: {repo_dir}"
+            )
 
         return cls(
             db_path=db_path,
@@ -62,13 +64,27 @@ class AppConfig:
         )
 
 
+@dataclass(frozen=True)
+class GroupAssignmentSpec:
+    """Specification for assigning entries to a specific group."""
+
+    table: str
+    link_table: str
+    fk_col: str
+    comments: Tuple[str, ...]
+    group_id: Optional[int]
+    type_cond: str
+
+
 # --- Core Utilities ---
 
 
 def sanitize_domain(domain: str) -> str:
     """Sanitize and normalize a domain string."""
     if not isinstance(domain, str):
-        raise TypeError(f"Expected string for domain, got {type(domain).__name__}")
+        raise TypeError(
+            f"Expected string for domain, got {type(domain).__name__}"
+        )
     return domain.strip().lower()
 
 
@@ -143,7 +159,9 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
 # --- Database Interactions ---
 
 
-def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
+def execute_read(
+    cfg: AppConfig, query: str, params: Tuple = ()
+) -> List[Tuple]:
     """Execute a read-only SQL query against the Pi-hole database."""
     try:
         db_uri = f"file:{cfg.db_path}?mode=ro"
@@ -180,12 +198,16 @@ def process_step1(cfg: AppConfig) -> None:
     txt_entries: FrozenSet[str] = frozenset()
     if cfg.whitelist_txt_path.exists():
         try:
-            with open(cfg.whitelist_txt_path, "r", encoding="utf-8") as file_obj:
+            with open(
+                cfg.whitelist_txt_path, "r", encoding="utf-8"
+            ) as file_obj:
                 txt_entries = frozenset(
                     sanitize_domain(line) for line in file_obj if line.strip()
                 )
         except IOError as exc:
-            raise RuntimeError(f"Failed to read existing whitelist.txt: {exc}") from exc
+            raise RuntimeError(
+                f"Failed to read existing whitelist.txt: {exc}"
+            ) from exc
 
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
@@ -206,18 +228,24 @@ def process_step1(cfg: AppConfig) -> None:
             cursor.executemany(delete_links, params)
             cursor.executemany(delete_domains, params)
     except sqlite3.Error as exc:
-        raise RuntimeError(f"Database deletion transaction failed: {exc}") from exc
+        raise RuntimeError(
+            f"Database deletion transaction failed: {exc}"
+        ) from exc
 
     run_command(
         ["docker", "exec", "pihole", "pihole", "reloadlists"],
         timeout=cfg.subprocess_timeout,
     )
-    logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
+    logger.info(
+        "Step 1 Complete: Extracted and merged %d entries.", len(db_entries)
+    )
 
 
 def process_immutable_hosts(cfg: AppConfig) -> None:
-    """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt and remove them from DB."""
-    query = "SELECT domain FROM domainlist WHERE type = 0 AND comment = 'hosts'"
+    """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt."""
+    query = (
+        "SELECT domain FROM domainlist WHERE type = 0 AND comment = 'hosts'"
+    )
     db_entries_raw = execute_read(cfg, query)
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
@@ -231,20 +259,22 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
                     sanitize_domain(line) for line in file_obj if line.strip()
                 )
         except IOError as exc:
-            raise RuntimeError(f"Failed to read existing hosts.txt: {exc}") from exc
+            raise RuntimeError(
+                f"Failed to read existing hosts.txt: {exc}"
+            ) from exc
 
     if not db_entries:
         logger.info("No new 'hosts' entries to merge from DB.")
         return
 
-    # Automatically deduplicates via set union, sorts alphabetically, and keeps entries permanently
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(hosts_path, combined_entries)
 
     params = [(e,) for e in db_entries]
     delete_links = (
         "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
-        "(SELECT id FROM domainlist WHERE domain = ? AND type = 0 AND comment = 'hosts')"
+        "(SELECT id FROM domainlist WHERE domain = ? "
+        "AND type = 0 AND comment = 'hosts')"
     )
     delete_domains = (
         "DELETE FROM domainlist WHERE domain = ? "
@@ -261,11 +291,14 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
             f"Database deletion transaction for hosts failed: {exc}"
         ) from exc
 
-    logger.info("Extracted, merged, and deleted %d 'hosts' entries from DB.", len(db_entries))
+    logger.info(
+        "Extracted, merged, and deleted %d 'hosts' entries from DB.",
+        len(db_entries),
+    )
 
 
 def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
-    """Read an immutable whitelist file (like healthcheck or hosts) if present, ignoring DB absence."""
+    """Read an immutable whitelist file if present."""
     file_path = cfg.whitelists_dir / filename
     if not file_path.is_file():
         return frozenset()
@@ -276,7 +309,8 @@ def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
             )
             logger.info(
                 "Cataloged %d entries from immutable %s.",
-                len(domains), filename
+                len(domains),
+                filename,
             )
             return domains
     except IOError as exc:
@@ -287,7 +321,7 @@ def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
 def extract_categorized_whitelists(
     cfg: AppConfig,
 ) -> Dict[str, FrozenSet[str]]:
-    """Parse database and cluster domains into categories, ignoring exact immutable entries."""
+    """Parse DB and cluster domains into categories, ignoring immutables."""
     query = (
         "SELECT domain, comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != '' "
@@ -308,17 +342,20 @@ def extract_categorized_whitelists(
         if len(domains) >= 2 or cat.lower() in ("healthcheck", "hosts")
     }
 
-    # Incorporate immutable txt files to guarantee the category objects/groups are created
     for immutable_cat in ["healthcheck", "hosts"]:
-        immutable_domains = load_immutable_whitelist(cfg, f"{immutable_cat}.txt")
+        immutable_domains = load_immutable_whitelist(
+            cfg, f"{immutable_cat}.txt"
+        )
         if immutable_domains:
             categories_result[immutable_cat] = immutable_domains
 
     return categories_result
 
 
-def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Write generated categories to physical category files, protecting immutable files."""
+def write_category_files(
+    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
+) -> None:
+    """Write generated categories to physical category files."""
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
@@ -328,7 +365,6 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
     for category, domains in categories.items():
         if category.lower() in ("healthcheck", "hosts"):
-            # Immutable files: never delete entries, never overwrite, skip wiping entirely.
             logger.info(
                 "Skipping write/overwrite for immutable file: %s.txt",
                 category.lower(),
@@ -341,35 +377,34 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
 def _assign_exclusive_group(
     cursor: sqlite3.Cursor,
-    table: str,
-    link_table: str,
-    fk_col: str,
-    comments: Tuple[str, ...],
-    group_id: Optional[int],
-    type_cond: str,
+    spec: GroupAssignmentSpec,
 ) -> None:
-    """Exclusively assign domains or adlists matching specified comments to a target group."""
-    if group_id is None:
+    """Exclusively assign domains/adlists matching comments to a group."""
+    if spec.group_id is None:
         return
-    placeholders = " OR ".join(["comment = ?"] * len(comments))
-    query = f"SELECT id FROM {table} WHERE ({placeholders}) AND {type_cond}"
-    cursor.execute(query, comments)
+    placeholders = " OR ".join(["comment = ?"] * len(spec.comments))
+    query = (
+        f"SELECT id FROM {spec.table} WHERE "
+        f"({placeholders}) AND {spec.type_cond}"
+    )
+    cursor.execute(query, spec.comments)
     ids = [row[0] for row in cursor.fetchall()]
     if ids:
         cursor.executemany(
-            f"DELETE FROM {link_table} WHERE {fk_col} = ?",
+            f"DELETE FROM {spec.link_table} WHERE {spec.fk_col} = ?",
             [(item_id,) for item_id in ids],
         )
         cursor.executemany(
-            f"INSERT INTO {link_table} ({fk_col}, group_id) VALUES (?, ?)",
-            [(item_id, group_id) for item_id in ids],
+            f"INSERT INTO {spec.link_table} ({spec.fk_col}, group_id) "
+            "VALUES (?, ?)",
+            [(item_id, spec.group_id) for item_id in ids],
         )
 
 
 def _recreate_groups(
     cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
 ) -> Dict[str, int]:
-    """Rebuild non-default group definitions and return a mapping of group names to IDs."""
+    """Rebuild non-default group definitions and return group map."""
     cursor.execute('SELECT id FROM "group" WHERE id = 0')
     if cursor.fetchone() is None:
         raise RuntimeError("Integrity Error: Default group (id=0) missing.")
@@ -396,7 +431,7 @@ def _recreate_groups(
 def _assign_standard_domains(
     cursor: sqlite3.Cursor, group_map: Dict[str, int]
 ) -> None:
-    """Link non-exclusive domainlist entries to their respective comment categories."""
+    """Link non-exclusive domainlist entries to comment categories."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
         "WHERE comment IS NOT NULL AND comment != '' "
@@ -416,10 +451,10 @@ def _assign_standard_domains(
         )
 
 
-def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Rebuild Pi-hole DB groups safely preserving client associations,
-    keeping regex entries, and exclusively assigning protected allowlists.
-    """
+def rebuild_db_groups(
+    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
+) -> None:
+    """Rebuild Pi-hole DB groups safely preserving client associations."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
@@ -441,22 +476,43 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             hc_gid = group_map.get("healthcheck")
             hosts_gid = group_map.get("hosts")
 
-            _assign_exclusive_group(
-                cursor, "domainlist", "domainlist_by_group", "domainlist_id",
-                ("healthcheck", "healtcheck"), hc_gid, "type IN (0, 2)"
-            )
-            _assign_exclusive_group(
-                cursor, "domainlist", "domainlist_by_group", "domainlist_id",
-                ("hosts",), hosts_gid, "type IN (0, 2)"
-            )
-            _assign_exclusive_group(
-                cursor, "adlist", "adlist_by_group", "adlist_id",
-                ("healthcheck", "healtcheck"), hc_gid, "type = 1"
-            )
-            _assign_exclusive_group(
-                cursor, "adlist", "adlist_by_group", "adlist_id",
-                ("hosts",), hosts_gid, "type = 1"
-            )
+            specs = [
+                GroupAssignmentSpec(
+                    table="domainlist",
+                    link_table="domainlist_by_group",
+                    fk_col="domainlist_id",
+                    comments=("healthcheck", "healtcheck"),
+                    group_id=hc_gid,
+                    type_cond="type IN (0, 2)",
+                ),
+                GroupAssignmentSpec(
+                    table="domainlist",
+                    link_table="domainlist_by_group",
+                    fk_col="domainlist_id",
+                    comments=("hosts",),
+                    group_id=hosts_gid,
+                    type_cond="type IN (0, 2)",
+                ),
+                GroupAssignmentSpec(
+                    table="adlist",
+                    link_table="adlist_by_group",
+                    fk_col="adlist_id",
+                    comments=("healthcheck", "healtcheck"),
+                    group_id=hc_gid,
+                    type_cond="type = 1",
+                ),
+                GroupAssignmentSpec(
+                    table="adlist",
+                    link_table="adlist_by_group",
+                    fk_col="adlist_id",
+                    comments=("hosts",),
+                    group_id=hosts_gid,
+                    type_cond="type = 1",
+                ),
+            ]
+
+            for spec in specs:
+                _assign_exclusive_group(cursor, spec)
 
             client_group_links = [
                 (client_id, group_map[group_name])
