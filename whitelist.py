@@ -9,7 +9,7 @@ import sys
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, FrozenSet, Iterable, List, Optional, Tuple
+from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
 # --- Production Logging Setup ---
 logger = logging.getLogger("PiholeWhitelistManager")
@@ -225,7 +225,7 @@ def extract_categorized_whitelists(
     )
     rows = execute_read(cfg, query)
 
-    temp_dict: Dict[str, set[str]] = {}
+    temp_dict: Dict[str, Set[str]] = {}
     for domain, comment in rows:
         categories = parse_comment_categories(comment)
         sanitized_dom = sanitize_domain(domain)
