@@ -269,11 +269,22 @@ def push_to_github(cfg: AppConfig) -> None:
         logger.info("Step 4 Complete: No file modifications detected. Skipping Git push.")
         return
 
-    commit_msg = f"auto-update-{os.urandom(4).hex()}"
+    # Commit message is now purely the random hex string
+    commit_msg = os.urandom(4).hex()
     run_command(["git", "commit", "-m", commit_msg], cwd=cfg.repo_dir, timeout=cfg.subprocess_timeout)
-    run_command(["git", "push"], cwd=cfg.repo_dir, timeout=cfg.subprocess_timeout * 2) 
-
-    logger.info(f"Step 4 Complete: Pushed commit '{commit_msg}' to GitHub.")
+    
+    # Run git push asynchronously in the background
+    try:
+        subprocess.Popen(
+            ["git", "push"],
+            cwd=cfg.repo_dir,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        logger.info(f"Step 4 Complete: Commit '{commit_msg}' created and push dispatched to background.")
+    except Exception as e:
+        logger.error(f"Failed to start background git push: {e}")
+        raise RuntimeError(f"Background push failed: {e}") from e
 
 
 # --- Main Execution Control ---
