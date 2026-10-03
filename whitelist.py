@@ -260,10 +260,10 @@ def process_step1(cfg: AppConfig) -> None:
     write_atomic(cfg.whitelist_txt_path, combined_entries)
 
     params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
-    
+
     delete_links = SQL_DELETE_LINKS.format(
-        table="domainlist_by_group", 
-        fk_col="domainlist_id", 
+        table="domainlist_by_group",
+        fk_col="domainlist_id",
         base_table="domainlist",
         extra_cond=""
     )
@@ -307,10 +307,10 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
     write_atomic(hosts_path, combined_entries)
 
     params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
-    
+
     delete_links = SQL_DELETE_LINKS.format(
-        table="domainlist_by_group", 
-        fk_col="domainlist_id", 
+        table="domainlist_by_group",
+        fk_col="domainlist_id",
         base_table="domainlist",
         extra_cond="AND comment = 'hosts'"
     )
@@ -581,12 +581,13 @@ def push_to_github(cfg: AppConfig) -> None:
 
     try:
         # Use start_new_session=True to cleanly detach the background process
+        # pylint: disable=consider-using-with
         subprocess.Popen(
             ["git", "push"],
             cwd=cfg.repo_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            start_new_session=True, 
+            start_new_session=True,
         )
         logger.info(
             "Step 4 Complete: Commit '%s' created and push dispatched.",
