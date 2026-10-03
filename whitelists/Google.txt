@@ -45,6 +45,7 @@ firebaselogging-pa.googleapis.com
 firebaseremoteconfig.googleapis.com
 firebasestorage.googleapis.com
 gemini.google.com
+gemini.gstatic.com
 gmail.com
 gmail.google.com
 google.com
