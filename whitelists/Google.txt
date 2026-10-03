@@ -44,7 +44,6 @@ firebaseinstallations.googleapis.com
 firebaselogging-pa.googleapis.com
 firebaseremoteconfig.googleapis.com
 firebasestorage.googleapis.com
-fonts.googleapis.com
 gmail.com
 gmail.google.com
 google.com
@@ -70,7 +69,6 @@ maps.google.com
 maps.googleapis.com
 mtalk.google.com
 myaccount.google.com
-news.google.com
 notifications.google.com
 oauthaccountmanager.googleapis.com
 pki-goog.l.google.com
@@ -90,7 +88,6 @@ talk.l.google.com
 talkgadget.google.com
 talks.l.google.com
 talkx.l.google.com
-translate.google.com
 update.googleapis.com
 video.google.com
 webcache.googleusercontent.com

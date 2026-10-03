@@ -25,7 +25,6 @@ deviceenrollment.apple.com
 deviceservices-external.apple.com
 diagassets.apple.com
 discussions.apple.com
-e673.dscx.akamaiedge.net
 fba.apple.com
 feedbackws.icloud.com
 gdmf.apple.com
@@ -73,9 +72,6 @@ swdownload.apple.com
 swpost.apple.com
 swscan.apple.com
 tbsc.apple.com
-time-ios.apple.com
-time-macos.apple.com
-time.apple.com
 token.safebrowsing.apple
 trailers.apple.com
 updates-http.cdn-apple.com
