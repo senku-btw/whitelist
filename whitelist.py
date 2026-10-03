@@ -1,955 +1,191 @@
-"""
-Combined Autonomous Pi-hole Group Manager, Whitelist Pipeline,
-and Git Sync.
-
-Executes a unified pipeline:
-1. Migrates blank-comment domains from the Default group in gravity.db
-   into whitelist.txt, deduplicating and sorting them alphabetically.
-2. Rebuilds Pi-hole groups based on regular domain comments
-   (min 2 occurrences) and maps domains/clients, ignoring default
-   web query log entries.
-3. Attaches specific regex blacklist and whitelist entries to the
-   "block-everything" group if recreated.
-4. Extracts categorized whitelists from gravity.db into individual
-   files under whitelists/.
-5. Reloads Pi-hole FTL and pushes all changes to Git.
-"""
-
-import fcntl
-import os
-import re
-import secrets
-import shutil
 import sqlite3
 import subprocess
-import sys
-import time
-import unicodedata
-from collections import defaultdict
+import os
+import secrets
+import re
 from pathlib import Path
-from types import MappingProxyType
-from typing import Dict, List, Set, Tuple
 
-# --- Path Configurations ---
-SCRIPT_DIR = Path(__file__).parent.resolve()
-DB_PATH = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
-LOCK_FILE_PATH = Path("/tmp/pihole_group_sync.lock")
-WHITELIST_TXT_PATH = SCRIPT_DIR / "whitelist.txt"
-WHITELISTS_DIR = SCRIPT_DIR / "whitelists"
-
-# --- Group & Whitelist Rules ---
-SKIPPED_GROUPS = frozenset(["Hosts", "block-everything"])
-DEFAULT_GROUP = "Default"
-MIN_GROUP_OCCURRENCES = 2
-IMMUTABLE_CATEGORIES = frozenset(["hosts", "Facebook"])
-IGNORED_COMMENT_SUBSTRINGS = (
-    "added through the query log",
-    "added from query log",
-)
-
-CORRECTIONS = MappingProxyType(
-    {
-        "Microsoftoffice": "Microsoft Office",
-        "Microsoftoutlook": "Microsoft Outlook",
-        "Amazonkindle": "Amazon Kindle",
-    }
-)
-
-# --- Git Configurations ---
-GIT_BOT_NAME = "Pi-hole Auto Sync Bot"
-GIT_BOT_EMAIL = "pihole-bot@users.noreply.github.com"
-GIT_TIMEOUT_SECONDS = 30
-
-
-# ==============================================================================
-# Helper Utilities & Sanitization
-# ==============================================================================
-
-
-def generate_mixed_hex_comment(length: int = 7) -> str:
-    """Generates a random hex string containing both digits and letters (a-f)."""
-    while True:
-        token = secrets.token_hex(4)[:length]
-        if any(c.isdigit() for c in token) and any(c.isalpha() for c in token):
-            return token
-
-
-def sanitize_filename(filename: str) -> str:
-    """Sanitizes a string to be used as a safe filesystem name."""
-    if not isinstance(filename, str):
-        return "unnamed_category"
-
-    sanitized = re.sub(r'[\\/*?:"<>|]', "", filename)
-    # Replaces spaces with underscores to create patterns like "Microsoft_Windows"
-    sanitized = sanitized.strip().replace(" ", "_")
-    return sanitized if sanitized else "unnamed_category"
-
+def get_base_paths() -> tuple[Path, Path, Path]:
+    db_path = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
+    base_dir = db_path.parent
+    txt_path = base_dir / "whitelist.txt"
+    return db_path, base_dir, txt_path
 
 def sanitize_domain(domain: str) -> str:
-    """
-    Fully sanitizes a domain entry by normalizing Unicode, removing control/space
-    characters, stripping protocols/paths, and enforcing standard domain chars.
-    """
-    if not domain or not isinstance(domain, str):
-        return ""
+    return domain.strip().lower()
 
-    domain = unicodedata.normalize("NFKC", domain)
-    domain = "".join(
-        ch
-        for ch in domain
-        if not unicodedata.category(ch).startswith("C")
-        and unicodedata.category(ch) != "Zs"
-    )
-    domain = domain.strip().lower()
-    domain = re.sub(r"^https?://", "", domain)
-    domain = domain.split("/")[0].split("?")[0].split("#")[0]
-    domain = re.sub(r"[^a-z0-9\.\-\_\*]", "", domain)
-    return domain.strip(".-")
-
-
-def clean_to_title_case(text: str) -> str:
-    """Sanitize control chars, normalize whitespace, apply corrections, and Title Case,
-    preserving exact letter casing inside parentheses."""
-    if not text:
-        return ""
-    clean = re.sub(r"[\x00-\x1f\x7f]+", "", str(text))
-    clean = re.sub(r"\s+", " ", clean).strip()
-    if not clean:
-        return ""
-
-    # Preserve "block-everything" exact comment casing and naming
-    if clean.lower() in ("block-everything", "block-eveything"):
-        return "block-everything"
-
-    parts = re.split(r"(\([^\)]*\))", clean)
-    processed = []
-    for part in parts:
-        if part.startswith("(") and part.endswith(")"):
-            processed.append(part)
-        else:
-            # .title() automatically capitalizes the first letter of each word
-            processed.append(part.title())
-
-    result = "".join(processed)
-    if result in CORRECTIONS:
-        return CORRECTIONS[result]
-    return result
-
-
-def split_comment_into_groups(comment: str) -> List[str]:
-    """
-    Splits a comment string into individual group names when separated by delimiters
-    like '/', ',', ';', ' & ', or ' and ' (e.g. 'Microsoft Windows/Spotify'),
-    while preserving multi-word group names and text inside parentheses or curly brackets.
-    """
+def parse_comment_categories(comment: str) -> list[str]:
     if not comment:
         return []
+    cleaned_comment = re.sub(r'\{.*?\}', '', comment)
+    return [c.strip() for c in cleaned_comment.split('/') if c.strip()]
 
-    parts = re.split(r"(\([^\)]*\)|\{[^\}]*\})", comment)
-    delim_pattern = re.compile(r"\s*(?:/|,|;|\s+&\s+|\s+and\s+)\s*", re.IGNORECASE)
-
-    groups = [""]
-    for part in parts:
-        if (part.startswith("(") and part.endswith(")")) or (
-            part.startswith("{") and part.endswith("}")
-        ):
-            groups[-1] += part
-        else:
-            subparts = delim_pattern.split(part)
-            groups[-1] += subparts[0]
-            for sub in subparts[1:]:
-                groups.append(sub)
-
-    cleaned_groups = [g.strip() for g in groups if g.strip()]
-    return cleaned_groups if cleaned_groups else [comment.strip()]
-
-
-def is_valid_domain(domain: str) -> bool:
-    """Checks if a string is a valid, pure domain name."""
-    if not domain or not isinstance(domain, str):
-        return False
-
-    domain = domain.strip()
-    if len(domain) > 253:
-        return False
-
-    pattern = re.compile(
-        r"^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,63}$"
-    )
-    return bool(pattern.match(domain))
-
-
-def is_ignored_comment(comment: str) -> bool:
-    """Checks if a comment matches default web interface patterns that should be skipped."""
-    if not comment:
-        return False
-    lowered = comment.strip().lower()
-    return any(sub in lowered for sub in IGNORED_COMMENT_SUBSTRINGS)
-
-
-def _parse_category_comment(cat: str) -> Tuple[str, str]:
-    """Extracts main category and first subcategory from a comment string."""
-    match = re.search(r"^(.*?)\s*\{([^}]*)\}\s*$", cat)
-    if not match:
-        return clean_to_title_case(cat), ""
-
-    main_cat = clean_to_title_case(match.group(1))
-    raw_subcats = match.group(2).strip()
-    if not raw_subcats:
-        return main_cat, ""
-
-    # Strip whitespace without applying title case logic
-    parsed_subs = [s.strip() for s in re.split(r"\s*,\s*", raw_subcats) if s.strip()]
-
-    # Isolate the first subcategory
-    sub_cat = parsed_subs[0] if parsed_subs else ""
-
-    # Reassign exact 'CDN' matches
-    if sub_cat == "CDN":
-        sub_cat = "Content Delivery Networks (CDNs)"
-
-    return main_cat, sub_cat
-
-
-# ==============================================================================
-# Part 1: Whitelist.txt and Group Management Operations
-# ==============================================================================
-
-
-def parse_whitelist_file() -> Set[str]:
-    """
-    Parses whitelist.txt extracting only valid domains.
-    Ignores all comments and empty lines for strict deduplication.
-    """
-    domains = set()
-    if WHITELIST_TXT_PATH.exists():
-        with open(WHITELIST_TXT_PATH, "r", encoding="utf-8") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    sanitized = sanitize_domain(line)
-                    if is_valid_domain(sanitized):
-                        domains.add(sanitized)
-    return domains
-
-
-def _write_whitelist_file(domains: Set[str]) -> None:
-    """Helper to write deduplicated, alphabetically sorted domains cleanly to whitelist.txt."""
-    with open(WHITELIST_TXT_PATH, "w", encoding="utf-8") as f:
-        for dom in sorted(domains):
-            f.write(f"{dom}\n")
-
-
-def process_and_clean_whitelist(cursor: sqlite3.Cursor) -> List[int]:
-    """
-    Parses whitelist.txt and gravity.db to extract whitelist domains (type 0)
-    that belong strictly to the Default group and possess no comment.
-    These are merged into whitelist.txt and marked for database deletion.
-    """
-    whitelist_domains = parse_whitelist_file()
-
-    # Query domains in the Default group with empty or null comments
-    cursor.execute(
-        """
-        SELECT d.id, d.domain
-        FROM domainlist d
-        JOIN domainlist_by_group dbg ON d.id = dbg.domainlist_id
-        JOIN "group" g ON dbg.group_id = g.id
-        WHERE d.type = 0
-          AND (d.comment IS NULL OR trim(d.comment) = '')
-          AND g.name = ?
-        """,
-        (DEFAULT_GROUP,),
+def restart_pihole() -> None:
+    subprocess.run(
+        ["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL
     )
 
-    db_ids_to_delete = []
-    for domain_id, domain in cursor.fetchall():
-        clean_dom = sanitize_domain(domain)
-        if is_valid_domain(clean_dom):
-            whitelist_domains.add(clean_dom)
-        db_ids_to_delete.append(domain_id)
-
-    # Write the clean, comment-free, sorted list back to the file
-    _write_whitelist_file(whitelist_domains)
-
-    return db_ids_to_delete
-
-
-def remove_migrated_domains(cursor: sqlite3.Cursor, ids_to_delete: List[int]):
-    """Deletes migrated domains and their group links from gravity.db."""
-    if not ids_to_delete:
-        return
-
-    cursor.executemany(
-        "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
-        [(domain_id,) for domain_id in ids_to_delete],
-    )
-    cursor.executemany(
-        "DELETE FROM domainlist WHERE id = ?",
-        [(domain_id,) for domain_id in ids_to_delete],
-    )
-    print(f"Removed {len(ids_to_delete)} migrated domain(s) from gravity.db.")
-
-
-def backup_client_mappings(cursor: sqlite3.Cursor) -> Dict[int, List[str]]:
-    """Records current client-to-group configurations before database purge."""
-    cursor.execute(
-        """
-        SELECT cbg.client_id, g.name
-        FROM client_by_group cbg
-        JOIN "group" g ON cbg.group_id = g.id
-        """
-    )
-    client_backup: Dict[int, List[str]] = defaultdict(list)
-    for client_id, group_name in cursor.fetchall():
-        client_backup[client_id].append(group_name)
-
-    return dict(client_backup)
-
-
-def _get_or_create_default_group(cursor: sqlite3.Cursor, timestamp: int) -> int:
-    """Retrieves or creates the Default group and returns its ID."""
-    cursor.execute('SELECT id FROM "group" WHERE name = ?', (DEFAULT_GROUP,))
-    default_row = cursor.fetchone()
-    if default_row:
-        return int(default_row[0])
-
-    cursor.execute(
-        'INSERT INTO "group" (name, date_added, date_modified, description) '
-        "VALUES (?, ?, ?, ?)",
-        (DEFAULT_GROUP, timestamp, timestamp, ""),
-    )
-    print(f"Created missing '{DEFAULT_GROUP}' group.")
-
-    if cursor.lastrowid is None:
-        raise RuntimeError("Failed to retrieve inserted group ID from database.")
-
-    return int(cursor.lastrowid)
-
-
-def _get_eligible_group_comments(cursor: sqlite3.Cursor) -> Set[str]:
-    """Counts whitelist domain comment occurrences and returns categories meeting the threshold."""
-    cursor.execute(
-        "SELECT comment FROM domainlist "
-        "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
-    )
-
-    comment_counts: Dict[str, int] = defaultdict(int)
-    for row in cursor.fetchall():
-        raw_comment = row[0].strip()
-        if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
-            continue
-
-        for cat in split_comment_into_groups(raw_comment):
-            cleaned_comment, _ = _parse_category_comment(cat)
-            if (
-                cleaned_comment
-                and cleaned_comment not in SKIPPED_GROUPS
-                and cleaned_comment != DEFAULT_GROUP
-            ):
-                comment_counts[cleaned_comment] += 1
-
-    return {
-        comment
-        for comment, count in comment_counts.items()
-        if count >= MIN_GROUP_OCCURRENCES
-    }
-
-
-def sync_groups(cursor: sqlite3.Cursor) -> Dict[str, int]:
-    """
-    Purges non-Default groups and mappings, recreates missing groups based on
-    whitelist comments that appear at least MIN_GROUP_OCCURRENCES times,
-    attaches default regex entries to 'block-everything', and returns group mapping.
-    """
-    current_timestamp = int(time.time())
-    default_group_id = _get_or_create_default_group(cursor, current_timestamp)
-
-    cursor.execute(
-        "DELETE FROM domainlist_by_group WHERE group_id != ?", (default_group_id,)
-    )
-    cursor.execute(
-        "DELETE FROM client_by_group WHERE group_id != ?", (default_group_id,)
-    )
-    cursor.execute(
-        "DELETE FROM adlist_by_group WHERE group_id != ?", (default_group_id,)
-    )
-
-    cursor.execute('DELETE FROM "group" WHERE id != ?', (default_group_id,))
-    print("Purged all previous non-Default groups and associated mappings.")
-
-    whitelisted_comments = _get_eligible_group_comments(cursor)
-    group_dict = {DEFAULT_GROUP: default_group_id}
-
-    if whitelisted_comments:
-        new_group_data = [
-            (name, current_timestamp, current_timestamp, "")
-            for name in sorted(whitelisted_comments)
-        ]
-        cursor.executemany(
-            'INSERT INTO "group" (name, date_added, date_modified, description) '
-            "VALUES (?, ?, ?, ?)",
-            new_group_data,
-        )
-
-        cursor.execute(
-            'SELECT id, name FROM "group" WHERE id != ?', (default_group_id,)
-        )
-        for group_id, name in cursor.fetchall():
-            cleaned_name = clean_to_title_case(name)
-            if cleaned_name:
-                group_dict[cleaned_name] = group_id
-
-        print(
-            f"Successfully recreated {len(whitelisted_comments)} group(s) "
-            f"(met threshold of {MIN_GROUP_OCCURRENCES}+ occurrences)."
-        )
-
-    # Recreate block-everything manually in gravity.db if missing, and attach regex rules
-    cursor.execute('SELECT id FROM "group" WHERE name = ?', ("block-everything",))
-    block_row = cursor.fetchone()
-    if block_row:
-        block_everything_id = block_row[0]
-    else:
-        cursor.execute(
-            'INSERT INTO "group" (name, date_added, date_modified, description) '
-            "VALUES (?, ?, ?, ?)",
-            ("block-everything", current_timestamp, current_timestamp, ""),
-        )
-        block_everything_id = cursor.lastrowid
-
-    if block_everything_id is not None:
-        group_dict["block-everything"] = block_everything_id
-
-        # Attach regex blacklists and whitelists to block-everything
-        cursor.execute(
-            """
-            SELECT id FROM domainlist
-            WHERE domain IN ('.*', '^.*$', '(^|\\.)in-addr\\.arpa$', '(^|.*\\.)in-addr\\.arpa$')
-              AND type IN (0, 1, 2, 3)
-            """
-        )
-        for (domain_id,) in cursor.fetchall():
-            cursor.execute(
-                "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) "
-                "VALUES (?, ?)",
-                (domain_id, block_everything_id),
-            )
-        print(
-            "Linked regex blacklist and whitelist entries (including in-addr.arpa) "
-            "to 'block-everything' group."
-        )
-
-    return group_dict
-
-
-def map_domains_to_groups(cursor: sqlite3.Cursor, group_dict: Dict[str, int]):
-    """Maps domains to all corresponding groups based on whitelist comments."""
-    cursor.execute(
-        "SELECT id, comment FROM domainlist "
-        "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
-    )
-
-    domains_to_clear = []
-    mapping_inserts = []
-    default_group_id = group_dict[DEFAULT_GROUP]
-
-    for domain_id, comment in cursor.fetchall():
-        raw_comment = comment.strip()
-        if raw_comment.startswith("#") or is_ignored_comment(raw_comment):
-            continue
-
-        domains_to_clear.append((domain_id,))
-
-        matched_any = False
-        for cat in split_comment_into_groups(raw_comment):
-            cleaned_comment, _ = _parse_category_comment(cat)
-            if cleaned_comment and cleaned_comment in group_dict:
-                group_id = group_dict[cleaned_comment]
-                mapping_inserts.append((domain_id, group_id))
-                matched_any = True
-
-        if not matched_any:
-            mapping_inserts.append((domain_id, default_group_id))
-
-    if domains_to_clear:
-        cursor.executemany(
-            "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
-            domains_to_clear,
-        )
-
-    if mapping_inserts:
-        cursor.executemany(
-            "INSERT INTO domainlist_by_group (domainlist_id, group_id) "
-            "VALUES (?, ?)",
-            mapping_inserts,
-        )
-        print(
-            f"Successfully linked {len(mapping_inserts)} whitelist domain(s) "
-            "to their corresponding groups."
-        )
-
-
-def restore_client_mappings(
-    cursor: sqlite3.Cursor,
-    client_backup: Dict[int, List[str]],
-    group_dict: Dict[str, int],
-):  # pylint: disable=too-many-locals
-    """
-    Restores client-to-group mappings.
-
-    Normal clients receive Default and any previously configured,
-    recreated non-Default groups.
-
-    The primary.hole client at 192.168.2.10 and localhost at 127.0.0.1
-    are assigned exclusively to block-everything.
-    """
-    default_group_id = group_dict[DEFAULT_GROUP]
-    block_everything_id = group_dict.get("block-everything")
-
-    # Ensure block-everything is available if special clients need configuration
-    if block_everything_id is None:
-        raise RuntimeError(
-            "The 'block-everything' group was not created or found; "
-            "cannot safely configure restricted clients."
-        )
-
-    # Locate primary.hole by IP address and hostname
-    cursor.execute(
-        """
-        SELECT id FROM client
-        WHERE ip = '192.168.2.10' AND comment = 'primary.hole'
-        """
-    )
-    primary_row = cursor.fetchone()
-    primary_client_id = primary_row[0] if primary_row is not None else None
-
-    # Locate localhost client by IP 127.0.0.1 or create/manage it
-    cursor.execute(
-        """
-        SELECT id FROM client
-        WHERE ip = '127.0.0.1'
-        """
-    )
-    localhost_row = cursor.fetchone()
-    localhost_client_id = localhost_row[0] if localhost_row is not None else None
-
-    if localhost_client_id is None:
-        current_timestamp = int(time.time())
-        cursor.execute(
-            """
-            INSERT INTO client (ip, mac, date_added, date_modified, comment)
-            VALUES (?, ?, ?, ?, ?)
-            """,
-            ("127.0.0.1", "", current_timestamp, current_timestamp, "localhost"),
-        )
-        localhost_client_id = cursor.lastrowid
-        print("Created localhost client (127.0.0.1) in database.")
-    else:
-        # Update comment if needed
-        cursor.execute(
-            "UPDATE client SET comment = 'localhost' WHERE id = ?",
-            (localhost_client_id,),
-        )
-
-    restricted_client_ids = {
-        cid for cid in (primary_client_id, localhost_client_id) if cid is not None
-    }
-
-    # Configure restricted clients exclusively for block-everything
-    for client_id in restricted_client_ids:
-        cursor.execute(
-            "DELETE FROM client_by_group WHERE client_id = ?",
-            (client_id,),
-        )
-        cursor.execute(
-            """
-            INSERT OR IGNORE INTO client_by_group (client_id, group_id)
-            VALUES (?, ?)
-            """,
-            (client_id, block_everything_id),
-        )
-
-    if primary_client_id is not None:
-        print("Assigned primary.hole (192.168.2.10) exclusively to 'block-everything'.")
-    print("Assigned localhost (127.0.0.1) exclusively to 'block-everything'.")
-
-    # Every normal client receives Default.
-    mapping_inserts = set()
-
-    cursor.execute("SELECT id FROM client")
-    for (client_id,) in cursor.fetchall():
-        if client_id in restricted_client_ids:
-            continue
-
-        mapping_inserts.add((client_id, default_group_id))
-
-    # Restore previously configured non-Default groups for normal clients.
-    for client_id, group_names in client_backup.items():
-        if client_id in restricted_client_ids:
-            continue
-
-        for group_name in group_names:
-            cleaned_name = clean_to_title_case(group_name)
-
-            if (
-                cleaned_name in group_dict
-                and cleaned_name != DEFAULT_GROUP
-                and cleaned_name != "block-everything"
-            ):
-                mapping_inserts.add((client_id, group_dict[cleaned_name]))
-
-    # Apply mappings for normal clients.
-    if mapping_inserts:
-        cursor.executemany(
-            """
-            INSERT OR IGNORE INTO client_by_group
-                (client_id, group_id)
-            VALUES (?, ?)
-            """,
-            list(mapping_inserts),
-        )
-
-        unique_clients = len({client_id for client_id, _ in mapping_inserts})
-
-        print(
-            "Restored saved configurations and enforced Default fallback "
-            f"for {unique_clients} normal client(s)."
-        )
-
-
-# ==============================================================================
-# Part 2: Categorized Whitelist File Extraction
-# ==============================================================================
-
-
-def read_db_whitelists(db_path: Path) -> Dict[str, Dict[str, Set[str]]]:
-    """Reads whitelists (type = 0) grouped by category and subcategories."""
-    if not db_path.is_file():
-        return {}
-
-    categories: Dict[str, Dict[str, Set[str]]] = defaultdict(lambda: defaultdict(set))
-    uri = f"file:{db_path.resolve()}?mode=ro"
-
-    try:
-        with sqlite3.connect(uri, uri=True, timeout=30.0) as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT domain, comment FROM domainlist WHERE type = 0")
-
-            for row in cursor.fetchall():
-                raw_domain = row[0] or ""
-                comment = row[1] or ""
-                category_name = comment.strip()
-
-                if (
-                    not category_name
-                    or category_name.startswith("#")
-                    or is_ignored_comment(category_name)
-                ):
-                    continue
-
-                cleaned_domain = sanitize_domain(raw_domain)
-                if not cleaned_domain or not is_valid_domain(cleaned_domain):
-                    continue
-
-                for cat in split_comment_into_groups(category_name):
-                    main_cat, sub_cat = _parse_category_comment(cat)
-                    if main_cat:
-                        categories[main_cat][sub_cat].add(cleaned_domain)
-
-    except sqlite3.Error as e:
-        print(f"Error reading gravity.db for file extraction: {e}")
-
-    return categories
-
-
-def _merge_existing_immutables(
-    target_dir: Path, categories: Dict[str, Dict[str, Set[str]]]
-) -> None:
-    """Ensures specified categories are append-only by merging existing directory files."""
-    for category in IMMUTABLE_CATEGORIES:
-        file_name = f"{sanitize_filename(category)}.txt"
-        file_path = target_dir / file_name
-
-        if not file_path.is_file():
-            continue
-
-        try:
-            with file_path.open("r", encoding="utf-8") as f:
-                current_sub = ""
-                for line in f:
-                    line = line.strip()
-                    if line.startswith("#"):
-                        current_sub = line.lstrip("#").strip()
-                        continue
-
-                    clean_line = sanitize_domain(line)
-                    if is_valid_domain(clean_line):
-                        categories[category][current_sub].add(clean_line)
-        except OSError:
-            pass
-
-
-def _write_category_files(
-    categories: Dict[str, Dict[str, Set[str]]], tmp_dir: Path
-) -> None:
-    """Writes categorized domains and their subcategories to individual text files."""
-    for category, subcategories in categories.items():
-        if category == "block-everything":
-            continue
-
-        file_name = f"{sanitize_filename(category)}.txt"
-        file_path = tmp_dir / file_name
-
-        has_domains = any(
-            is_valid_domain(sanitize_domain(d))
-            for doms in subcategories.values()
-            for d in doms
-        )
-        if not has_domains:
-            continue
-
-        with file_path.open("w", encoding="utf-8", newline="\n") as f:
-            if "" in subcategories:
-                sanitized_base_set = {
-                    sanitize_domain(d)
-                    for d in subcategories[""]
-                    if is_valid_domain(sanitize_domain(d))
-                }
-                base_domains = sorted(sanitized_base_set)
-
-                for domain in base_domains:
-                    f.write(f"{domain}\n")
-                if base_domains and len(subcategories) > 1:
-                    f.write("\n")
-
-            for subcat in sorted(k for k in subcategories.keys() if k):
-                sanitized_subcat_set = {
-                    sanitize_domain(d)
-                    for d in subcategories[subcat]
-                    if is_valid_domain(sanitize_domain(d))
-                }
-                subcat_domains = sorted(sanitized_subcat_set)
-
-                if subcat_domains:
-                    f.write(f"# {subcat}\n")
-                    for domain in subcat_domains:
-                        f.write(f"{domain}\n")
-                    f.write("\n")
-
-
-def write_whitelists_atomically(
-    categories: Dict[str, Dict[str, Set[str]]], target_dir: Path
-) -> None:
-    """Atomically swaps directory contents with freshly exported category text files."""
-    target_dir.parent.mkdir(parents=True, exist_ok=True)
-    _merge_existing_immutables(target_dir, categories)
-
-    hex_id = secrets.token_hex(4)
-    tmp_dir = target_dir.with_name(f".{target_dir.name}_tmp_{hex_id}")
-    backup_dir = target_dir.with_name(f".{target_dir.name}_backup_{hex_id}")
-
-    try:
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        _write_category_files(categories, tmp_dir)
-
-        if target_dir.exists():
-            target_dir.rename(backup_dir)
-
-        tmp_dir.rename(target_dir)
-        print(
-            f"Successfully updated individual whitelist files in '{target_dir.name}/'."
-        )
-
-    except OSError as e:
-        print(f"Failed atomic write for category files: {e}")
-        if backup_dir.exists() and not target_dir.exists():
-            backup_dir.rename(target_dir)
-        raise
-
-    finally:
-        for cleanup_dir in (tmp_dir, backup_dir):
-            if cleanup_dir.exists():
-                shutil.rmtree(cleanup_dir, ignore_errors=True)
-
-
-# ==============================================================================
-# Part 3: Engine Reload & Git Synchronization
-# ==============================================================================
-
-
-def reload_pihole_engine():
-    """Forces a full restart/refresh of Pi-hole FTL engine to reload memory cache."""
-    try:
-        if os.path.exists("/.dockerenv"):
-            subprocess.run(
-                ["pkill", "-9", "-f", "pihole-FTL"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        else:
-            subprocess.run(
-                ["docker", "restart", "pihole"],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        print("Successfully restarted Pi-hole engine and refreshed memory cache.")
-    except subprocess.CalledProcessError as e:
-        err_msg = e.stderr.strip() if e.stderr else e.stdout.strip()
-        print(f"Warning: Failed to restart Pi-hole container. Details: {err_msg}")
-    except (OSError, subprocess.SubprocessError) as e:
-        print(f"Warning: Could not automatically restart Pi-hole FTL: {e}")
-
-
-def git_sync(repo_dir: Path) -> None:
-    """Stages all changes, commits with a mixed hex ID, and pushes upstream."""
-    file_path_check = repo_dir / ".git"
-    if not file_path_check.is_dir():
-        print(f"Error: {repo_dir} is not a Git repository.")
-        return
-
-    index_lock = repo_dir / ".git" / "index.lock"
-    if index_lock.is_file():
-        try:
-            index_lock.unlink()
-        except OSError:
-            pass
-
-    env = os.environ.copy()
-    env["GIT_TERMINAL_PROMPT"] = "0"
-    env["GIT_AUTHOR_NAME"] = GIT_BOT_NAME
-    env["GIT_AUTHOR_EMAIL"] = GIT_BOT_EMAIL
-    env["GIT_COMMITTER_NAME"] = GIT_BOT_NAME
-    env["GIT_COMMITTER_EMAIL"] = GIT_BOT_EMAIL
-
-    try:
-        subprocess.run(
-            ["git", "pull", "--rebase", "--autostash"],
-            cwd=repo_dir,
-            check=True,
-            capture_output=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-            env=env,
-        )
-
-        subprocess.run(
-            ["git", "add", "-A"],
-            cwd=repo_dir,
-            check=True,
-            capture_output=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-            env=env,
-        )
-
-        status = subprocess.run(
-            ["git", "status", "--porcelain"],
-            cwd=repo_dir,
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-            env=env,
-        )
-
-        if not status.stdout.strip():
-            print("No repository changes detected. Skipping Git push.")
-            return
-
-        commit_hex = generate_mixed_hex_comment(7)
-
-        subprocess.run(
-            ["git", "commit", "-m", commit_hex],
-            cwd=repo_dir,
-            check=True,
-            capture_output=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-            env=env,
-        )
-
-        subprocess.run(
-            ["git", "push"],
-            cwd=repo_dir,
-            check=True,
-            capture_output=True,
-            timeout=GIT_TIMEOUT_SECONDS,
-            env=env,
-        )
-        print(f"Successfully pushed all changes to Git [commit: {commit_hex}].")
-
-    except subprocess.TimeoutExpired as e:
-        print(
-            f"ERROR: Git operation timed out after {GIT_TIMEOUT_SECONDS}s: "
-            f"{' '.join(e.cmd)}"
-        )
-    except subprocess.CalledProcessError as e:
-        err_msg = e.stderr.decode("utf-8").strip() if e.stderr else "Unknown error"
-        print(f"ERROR: Git operation failed: {' '.join(e.cmd)}\n" f"Details: {err_msg}")
-
-
-# ==============================================================================
-# Core Pipeline Execution & Main Entry Point
-# ==============================================================================
-
-
-def run_sync_pipeline():
-    """Executes the full combined pipeline."""
-    if not DB_PATH.exists():
-        print(f"FATAL: Database not found at {DB_PATH}")
-        sys.exit(1)
-
-    conn = sqlite3.connect(DB_PATH)
-    cursor = conn.cursor()
-
-    try:
-        conn.execute("BEGIN TRANSACTION")
-
-        print(f"Processing and regenerating {WHITELIST_TXT_PATH.name}...")
-        ids_to_delete = process_and_clean_whitelist(cursor)
-        remove_migrated_domains(cursor, ids_to_delete)
-
-        client_backup = backup_client_mappings(cursor)
-        existing_groups = sync_groups(cursor)
-        map_domains_to_groups(cursor, existing_groups)
-        restore_client_mappings(cursor, client_backup, existing_groups)
-
+def execute_db_read(db_path: Path, query: str, params: tuple = ()) -> list[tuple]:
+    with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query, params)
+        return cursor.fetchall()
+
+def execute_db_write(db_path: Path, queries: tuple[str, list[tuple]]) -> None:
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        for query, params in queries:
+            cursor.executemany(query, params)
         conn.commit()
-        print("Database transaction committed successfully.")
 
-    except Exception as e:  # pylint: disable=broad-exception-caught
-        conn.rollback()
-        print(
-            f"FATAL ERROR: Operation failed. Rolled back database changes.\nDetails: {e}"
-        )
-        sys.exit(1)
-    finally:
-        conn.close()
+# --- Step 1 ---
 
-    categories = read_db_whitelists(DB_PATH)
-    write_whitelists_atomically(categories, WHITELISTS_DIR)
+def fetch_step1_db_entries(db_path: Path) -> frozenset[str]:
+    query = """
+        SELECT d.domain 
+        FROM domainlist d
+        JOIN domainlist_by_group dg ON d.id = dg.domainlist_id
+        JOIN "group" g ON dg.group_id = g.id
+        WHERE d.type = 0 
+        AND (d.comment IS NULL OR d.comment = '')
+        AND g.name = 'Default'
+    """
+    rows = execute_db_read(db_path, query)
+    return frozenset(sanitize_domain(row[0]) for row in rows)
 
-    reload_pihole_engine()
+def read_whitelist_txt(txt_path: Path) -> frozenset[str]:
+    if not txt_path.exists():
+        return frozenset()
+    with open(txt_path, 'r') as f:
+        return frozenset(sanitize_domain(line) for line in f if line.strip())
 
-    git_sync(SCRIPT_DIR)
+def write_combined_whitelist(txt_path: Path, combined_entries: frozenset[str]) -> None:
+    sorted_entries = sorted(list(combined_entries))
+    with open(txt_path, 'w') as f:
+        for entry in sorted_entries:
+            f.write(f"{entry}\n")
 
+def delete_step1_db_entries(db_path: Path, entries: frozenset[str]) -> None:
+    if not entries:
+        return
+    params = [(e,) for e in entries]
+    queries = (
+        ("DELETE FROM domainlist_by_group WHERE domainlist_id IN (SELECT id FROM domainlist WHERE domain = ? AND type = 0)", params),
+        ("DELETE FROM domainlist WHERE domain = ? AND type = 0 AND (comment IS NULL OR comment = '')", params)
+    )
+    execute_db_write(db_path, queries)
 
-def main():
-    """Main entry point enforcing single-instance execution via lockfile."""
+def process_step1(db_path: Path, txt_path: Path) -> None:
+    db_entries = fetch_step1_db_entries(db_path)
+    txt_entries = read_whitelist_txt(txt_path)
+    
+    if not db_entries:
+        return
+
+    combined = frozenset(db_entries | txt_entries)
+    write_combined_whitelist(txt_path, combined)
+    
+    delete_step1_db_entries(db_path, db_entries)
+    restart_pihole()
+
+# --- Step 2 ---
+
+def extract_categorized_whitelists(db_path: Path) -> dict[str, frozenset[str]]:
+    query = "SELECT domain, comment FROM domainlist WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
+    rows = execute_db_read(db_path, query)
+    
+    temp_dict: dict[str, set[str]] = {}
+    for domain, comment in rows:
+        sanitized_dom = sanitize_domain(domain)
+        categories = parse_comment_categories(comment)
+        
+        for cat in categories:
+            if cat not in temp_dict:
+                temp_dict[cat] = set()
+            temp_dict[cat].add(sanitized_dom)
+            
+    final_dict: dict[str, frozenset[str]] = {}
+    for cat, domains in temp_dict.items():
+        if len(domains) >= 2:
+            final_dict[cat] = frozenset(domains)
+            
+    return final_dict
+
+def format_filename(category: str) -> str:
+    safe_chars = "".join(c for c in category if c.isalnum() or c in (' ', '_', '-')).strip()
+    return re.sub(r'\s+', '_', safe_chars)
+
+def write_category_files(base_dir: Path, categories: dict[str, frozenset[str]]) -> None:
+    whitelists_dir = base_dir / "whitelists"
+    whitelists_dir.mkdir(exist_ok=True)
+    
+    for category, domains in categories.items():
+        safe_filename = format_filename(category)
+        file_path = whitelists_dir / f"{safe_filename}.txt"
+        sorted_domains = sorted(list(domains))
+        
+        with open(file_path, 'w') as f:
+            for domain in sorted_domains:
+                f.write(f"{domain}\n")
+
+# --- Step 3 ---
+
+def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> None:
+    with sqlite3.connect(db_path) as conn:
+        cursor = conn.cursor()
+        
+        cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
+        cursor.execute("DELETE FROM \"group\" WHERE id != 0")
+        
+        for cat_name in categories.keys():
+            cursor.execute("INSERT INTO \"group\" (name, description) VALUES (?, ?)", (cat_name, f"Auto-generated group for {cat_name}"))
+            
+        cursor.execute("SELECT id, name FROM \"group\" WHERE id != 0")
+        group_map = {name: gid for gid, name in cursor.fetchall()}
+        
+        cursor.execute("SELECT id, domain, comment FROM domainlist WHERE type = 0")
+        domains_data = cursor.fetchall()
+        
+        domain_group_links = []
+        for d_id, domain, comment in domains_data:
+            item_categories = parse_comment_categories(comment)
+            for ic in item_categories:
+                if ic in group_map:
+                    domain_group_links.append((d_id, group_map[ic]))
+                    
+        cursor.executemany("INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)", domain_group_links)
+        conn.commit()
+
+# --- Step 4 ---
+
+def push_to_github(base_dir: Path) -> None:
+    commit_msg = secrets.token_hex(4)
+    
+    subprocess.run(["git", "add", "."], cwd=base_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["git", "commit", "-m", commit_msg], cwd=base_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    subprocess.run(["git", "push"], cwd=base_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+# --- Main Execution ---
+
+def main() -> None:
     try:
-        with open(LOCK_FILE_PATH, "w", encoding="utf-8") as lock_file:
-            try:
-                fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                print("ERROR: Another instance of this script is already running.")
-                sys.exit(1)
-
-            run_sync_pipeline()
-
-    except OSError as err:
-        print(f"Failed to open or lock file: {err}")
-        sys.exit(1)
-
+        db_path, base_dir, txt_path = get_base_paths()
+        
+        process_step1(db_path, txt_path)
+        
+        categories = extract_categorized_whitelists(db_path)
+        write_category_files(base_dir, categories)
+        
+        rebuild_db_groups(db_path, categories)
+        
+        restart_pihole()
+        push_to_github(base_dir)
+        
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     main()
