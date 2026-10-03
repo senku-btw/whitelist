@@ -215,34 +215,81 @@ def process_step1(cfg: AppConfig) -> None:
     logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
 
 
-def load_healthcheck_whitelist(cfg: AppConfig) -> FrozenSet[str]:
-    """Read healthcheck.txt immutably if present, ignoring DB absence."""
-    healthcheck_path = cfg.whitelists_dir / "healthcheck.txt"
-    if not healthcheck_path.is_file():
+def process_immutable_hosts(cfg: AppConfig) -> None:
+    """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt and remove them from DB."""
+    query = "SELECT domain FROM domainlist WHERE type = 0 AND comment = 'hosts'"
+    db_entries_raw = execute_read(cfg, query)
+    db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
+
+    hosts_path = cfg.whitelists_dir / "hosts.txt"
+    txt_entries: FrozenSet[str] = frozenset()
+    
+    if hosts_path.exists():
+        try:
+            with open(hosts_path, "r", encoding="utf-8") as file_obj:
+                txt_entries = frozenset(
+                    sanitize_domain(line) for line in file_obj if line.strip()
+                )
+        except IOError as exc:
+            raise RuntimeError(f"Failed to read existing hosts.txt: {exc}") from exc
+
+    if not db_entries:
+        logger.info("No new 'hosts' entries to merge from DB.")
+        return
+
+    # Automatically deduplicates via set union, sorts alphabetically, and ensures entries are never deleted
+    combined_entries = sorted(list(db_entries | txt_entries))
+    write_atomic(hosts_path, combined_entries)
+
+    params = [(e,) for e in db_entries]
+    delete_links = (
+        "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
+        "(SELECT id FROM domainlist WHERE domain = ? AND type = 0 AND comment = 'hosts')"
+    )
+    delete_domains = (
+        "DELETE FROM domainlist WHERE domain = ? "
+        "AND type = 0 AND comment = 'hosts'"
+    )
+
+    try:
+        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
+            cursor = conn.cursor()
+            cursor.executemany(delete_links, params)
+            cursor.executemany(delete_domains, params)
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Database deletion transaction for hosts failed: {exc}") from exc
+
+    logger.info("Extracted, merged, and deleted %d 'hosts' entries from DB.", len(db_entries))
+
+
+def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
+    """Read an immutable whitelist file (like healthcheck or hosts) if present, ignoring DB absence."""
+    file_path = cfg.whitelists_dir / filename
+    if not file_path.is_file():
         return frozenset()
     try:
-        with open(healthcheck_path, "r", encoding="utf-8") as file_obj:
+        with open(file_path, "r", encoding="utf-8") as file_obj:
             domains = frozenset(
                 sanitize_domain(line) for line in file_obj if line.strip()
             )
             logger.info(
-                "Cataloged %d entries from immutable healthcheck.txt.",
-                len(domains),
+                "Cataloged %d entries from immutable %s.",
+                len(domains), filename
             )
             return domains
     except IOError as exc:
-        logger.warning("Failed to read healthcheck.txt: %s", exc)
+        logger.warning("Failed to read %s: %s", filename, exc)
         return frozenset()
 
 
 def extract_categorized_whitelists(
     cfg: AppConfig,
 ) -> Dict[str, FrozenSet[str]]:
-    """Parse database and cluster domains into categories, ignoring exact healthcheck entries."""
+    """Parse database and cluster domains into categories, ignoring exact immutable entries."""
     query = (
         "SELECT domain, comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != '' "
-        "AND comment != 'healthcheck'"
+        "AND comment NOT IN ('healthcheck', 'hosts')"
     )
     rows = execute_read(cfg, query)
 
@@ -256,38 +303,40 @@ def extract_categorized_whitelists(
     categories_result = {
         cat: frozenset(domains)
         for cat, domains in temp_dict.items()
-        if len(domains) >= 2 or cat.lower() == "healthcheck"
+        if len(domains) >= 2 or cat.lower() in ("healthcheck", "hosts")
     }
 
-    # Incorporate healthcheck.txt catalog immutably, ensuring healthcheck group is created
-    healthcheck_domains = load_healthcheck_whitelist(cfg)
-    if healthcheck_domains:
-        categories_result["healthcheck"] = healthcheck_domains
+    # Incorporate immutable txt files to guarantee the category objects/groups are created
+    for immutable_cat in ["healthcheck", "hosts"]:
+        immutable_domains = load_immutable_whitelist(cfg, f"{immutable_cat}.txt")
+        if immutable_domains:
+            categories_result[immutable_cat] = immutable_domains
 
     return categories_result
 
 
 def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Write generated categories to physical category files, protecting healthcheck.txt."""
+    """Write generated categories to physical category files, protecting immutable files."""
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
-        if existing_file.name.lower() == "healthcheck.txt":
+        if existing_file.name.lower() in ("healthcheck.txt", "hosts.txt"):
             continue
         existing_file.unlink()
 
     for category, domains in categories.items():
-        if category.lower() == "healthcheck":
-            # Immutable file: never delete entries, never add entries, never overwrite.
-            logger.info("Skipping write/overwrite for immutable file: healthcheck.txt")
+        if category.lower() in ("healthcheck", "hosts"):
+            # Immutable files: never delete entries, never overwrite, skip wiping entirely.
+            logger.info("Skipping write/overwrite for immutable file: %s.txt", category.lower())
             continue
         safe_filename = format_filename(category)
         file_path = cfg.whitelists_dir / f"{safe_filename}.txt"
         write_atomic(file_path, sorted(list(domains)))
 
+
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely preserving client associations,
-    keeping regex healthcheck entries, and exclusively assigning healthcheck allowlists.
+    keeping regex entries, and exclusively assigning protected allowlists.
     """
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
@@ -308,17 +357,17 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             )
             client_backups = cursor.fetchall()
 
-            # Optional: backup existing adlist mappings if you manage other adlists,
-            # but standard teardown clears domainlist/clients to rebuild them.
             cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
             cursor.execute('DELETE FROM "group" WHERE id != 0')
 
             sorted_categories = sorted(categories.keys())
             
-            # Ensure healthcheck group exists for assignment
+            # Ensure our immutable groups always exist for strict assignment
             if "healthcheck" not in sorted_categories:
                 sorted_categories.append("healthcheck")
+            if "hosts" not in sorted_categories:
+                sorted_categories.append("hosts")
 
             cursor.executemany(
                 'INSERT INTO "group" (name, description) VALUES (?, ?)',
@@ -327,13 +376,15 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             cursor.execute('SELECT id, name FROM "group" WHERE id != 0')
             group_map = {name: gid for gid, name in cursor.fetchall()}
+            
             hc_group_id = group_map.get("healthcheck")
+            hosts_group_id = group_map.get("hosts")
 
             # Standard group assignment for individual domains
             cursor.execute(
                 "SELECT id, comment FROM domainlist "
                 "WHERE comment IS NOT NULL AND comment != '' "
-                "AND (comment != 'healthcheck' OR type IN (2, 3))"
+                "AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (2, 3))"
             )
             domain_group_links = []
 
@@ -349,7 +400,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     domain_group_links,
                 )
 
-            # Exclusively assign healthcheck/healtcheck domain allowlists
+            # Exclusively assign healthcheck domain allowlists
             cursor.execute(
                 "SELECT id FROM domainlist "
                 "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
@@ -367,8 +418,24 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     [(d_id, hc_group_id) for d_id in hc_allowlists]
                 )
 
-            # Exclusively assign healthcheck/healtcheck Adlist subscriptions
-            # type = 1 identifies the adlist as an allowlist
+            # Exclusively assign hosts domain allowlists
+            cursor.execute(
+                "SELECT id FROM domainlist "
+                "WHERE comment = 'hosts' AND type IN (0, 2)"
+            )
+            hosts_allowlists = [row[0] for row in cursor.fetchall()]
+
+            if hosts_allowlists and hosts_group_id is not None:
+                cursor.executemany(
+                    "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
+                    [(d_id,) for d_id in hosts_allowlists]
+                )
+                cursor.executemany(
+                    "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
+                    [(d_id, hosts_group_id) for d_id in hosts_allowlists]
+                )
+
+            # Exclusively assign healthcheck Adlist subscriptions
             cursor.execute(
                 "SELECT id FROM adlist "
                 "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
@@ -377,15 +444,30 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             hc_adlists = [row[0] for row in cursor.fetchall()]
 
             if hc_adlists and hc_group_id is not None:
-                # Clear from all other groups, including default group 0
                 cursor.executemany(
                     "DELETE FROM adlist_by_group WHERE adlist_id = ?",
                     [(a_id,) for a_id in hc_adlists]
                 )
-                # Assign exclusively to the healthcheck group
                 cursor.executemany(
                     "INSERT INTO adlist_by_group (adlist_id, group_id) VALUES (?, ?)",
                     [(a_id, hc_group_id) for a_id in hc_adlists]
+                )
+
+            # Exclusively assign hosts Adlist subscriptions
+            cursor.execute(
+                "SELECT id FROM adlist "
+                "WHERE comment = 'hosts' AND type = 1"
+            )
+            hosts_adlists = [row[0] for row in cursor.fetchall()]
+
+            if hosts_adlists and hosts_group_id is not None:
+                cursor.executemany(
+                    "DELETE FROM adlist_by_group WHERE adlist_id = ?",
+                    [(a_id,) for a_id in hosts_adlists]
+                )
+                cursor.executemany(
+                    "INSERT INTO adlist_by_group (adlist_id, group_id) VALUES (?, ?)",
+                    [(a_id, hosts_group_id) for a_id in hosts_adlists]
                 )
 
             # Restore client associations
@@ -472,6 +554,7 @@ def main() -> None:
         cfg = AppConfig.load()
 
         process_step1(cfg)
+        process_immutable_hosts(cfg)
 
         categories = extract_categorized_whitelists(cfg)
         if not categories:
