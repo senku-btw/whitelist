@@ -39,6 +39,7 @@ developers.google.com
 device-provisioning.googleapis.com
 dl.google.com
 docs.google.com
+drive-thirdparty.googleusercontent.com
 drive.google.com
 firebaseinstallations.googleapis.com
 firebaselogging-pa.googleapis.com
