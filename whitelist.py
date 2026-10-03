@@ -191,7 +191,6 @@ def format_filename(category: str) -> str:
     return re.sub(r'\s+', '_', safe_chars)
 
 def write_category_files(repo_dir: Path, categories: dict[str, frozenset[str]]) -> None:
-    # Whitelists folder is created directly in the script's repository directory
     whitelists_dir = repo_dir / "whitelists"
     logger.info(f"Writing category files to {whitelists_dir}...")
     
@@ -199,7 +198,6 @@ def write_category_files(repo_dir: Path, categories: dict[str, frozenset[str]]) 
         whitelists_dir.mkdir(exist_ok=True)
         assert whitelists_dir.is_dir() and os.access(whitelists_dir, os.W_OK), "Whitelists directory is not writable"
         
-        # Clean out existing .txt files in whitelists/ to prevent stale files from persisting in Git
         for existing_file in whitelists_dir.glob("*.txt"):
             existing_file.unlink()
         
@@ -234,13 +232,22 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
             cursor.execute("SELECT id FROM \"group\" WHERE id = 0")
             assert cursor.fetchone() is not None, "CRITICAL: Default group (id=0) missing!"
             
+            logger.info("Backing up client group assignments...")
+            cursor.execute("""
+                SELECT cbg.client_id, g.name 
+                FROM client_by_group cbg
+                JOIN "group" g ON cbg.group_id = g.id
+                WHERE g.id != 0
+            """)
+            client_backups = cursor.fetchall()
+            
             logger.info("Clearing old non-default groups and relationships...")
+            cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM \"group\" WHERE id != 0")
             
             logger.info("Inserting new groups...")
             for cat_name in categories.keys():
-                # Modification A: Set description to just the category name instead of "Auto-generated..."
                 cursor.execute("INSERT INTO \"group\" (name, description) VALUES (?, ?)", 
                                (cat_name, cat_name))
                 
@@ -248,7 +255,6 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
             group_map = {name: gid for gid, name in cursor.fetchall()}
             
             logger.info("Re-associating domains with groups...")
-            # Modification B: Removed `WHERE type = 0` to iterate through ALL domain types (whitelists, blacklists, regex)
             cursor.execute("SELECT id, domain, comment FROM domainlist")
             domains_data = cursor.fetchall()
             
@@ -262,6 +268,16 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
                         domain_group_links.append((d_id, group_map[ic]))
                         
             cursor.executemany("INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)", domain_group_links)
+            
+            logger.info("Restoring client group assignments...")
+            client_group_links = []
+            for client_id, group_name in client_backups:
+                if group_name in group_map:
+                    client_group_links.append((client_id, group_map[group_name]))
+                    
+            if client_group_links:
+                cursor.executemany("INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)", client_group_links)
+                
         logger.info("Database groups rebuilt successfully.")
     except sqlite3.Error as e:
         logger.critical(f"Failed to rebuild DB groups (Transaction Rolled Back): {e}")
