@@ -240,14 +240,16 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
             
             logger.info("Inserting new groups...")
             for cat_name in categories.keys():
+                # Modification A: Set description to just the category name instead of "Auto-generated..."
                 cursor.execute("INSERT INTO \"group\" (name, description) VALUES (?, ?)", 
-                               (cat_name, f"Auto-generated group for {cat_name}"))
+                               (cat_name, cat_name))
                 
             cursor.execute("SELECT id, name FROM \"group\" WHERE id != 0")
             group_map = {name: gid for gid, name in cursor.fetchall()}
             
             logger.info("Re-associating domains with groups...")
-            cursor.execute("SELECT id, domain, comment FROM domainlist WHERE type = 0")
+            # Modification B: Removed `WHERE type = 0` to iterate through ALL domain types (whitelists, blacklists, regex)
+            cursor.execute("SELECT id, domain, comment FROM domainlist")
             domains_data = cursor.fetchall()
             
             domain_group_links = []
