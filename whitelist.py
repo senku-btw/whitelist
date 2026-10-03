@@ -7,81 +7,86 @@ import logging
 import sys
 from pathlib import Path
 
-# Configure logging to output only to stdout (RAM/console)
+# --- Production Logging Setup (Essential Output Only) ---
 logger = logging.getLogger("PiholeWhitelistManager")
 logger.setLevel(logging.INFO)
 handler = logging.StreamHandler(sys.stdout)
-formatter = logging.Formatter('%(asctime)s - %(levelname)s - [%(funcName)s] - %(message)s')
+formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s', datefmt='%Y-%m-%d %H:%M:%S')
 handler.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(handler)
 
+
+# --- Path Resolution & Validation ---
+
 def get_base_paths() -> tuple[Path, Path, Path]:
     db_path = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
-    
-    # Dynamically resolve the directory where this script is located (the Git repository root)
-    repo_dir = Path(__file__).resolve().parent 
-    
-    # All target files and folders must be in the script's repository directory
+    repo_dir = Path(__file__).resolve().parent
     txt_path = repo_dir / "whitelist.txt"
-    
-    assert db_path.exists(), f"Pi-hole database does not exist: {db_path}"
-    assert repo_dir.exists(), f"Repository directory does not exist: {repo_dir}"
+
+    if not db_path.exists():
+        raise FileNotFoundError(f"Pi-hole database does not exist at: {db_path}")
+    if not repo_dir.exists():
+        raise FileNotFoundError(f"Repository directory does not exist at: {repo_dir}")
+
     return db_path, txt_path, repo_dir
 
+
+# --- Helper Utilities ---
+
 def sanitize_domain(domain: str) -> str:
-    assert isinstance(domain, str), "Domain must be a string"
+    if not isinstance(domain, str):
+        raise TypeError("Domain must be a string")
     return domain.strip().lower()
 
+
 def parse_comment_categories(comment: str) -> list[str]:
-    if not comment:
+    if not comment or not isinstance(comment, str):
         return []
-    assert isinstance(comment, str), "Comment must be a string"
     cleaned_comment = re.sub(r'\{.*?\}', '', comment)
     return [c.strip() for c in cleaned_comment.split('/') if c.strip()]
 
+
+def format_filename(category: str) -> str:
+    if not category or not isinstance(category, str):
+        raise ValueError("Category must be a non-empty string")
+    safe_chars = "".join(c for c in category if c.isalnum() or c in (' ', '_', '-')).strip()
+    return re.sub(r'\s+', '_', safe_chars)
+
+
 def restart_pihole() -> None:
-    logger.info("Restarting Pi-hole FTL engine via Docker...")
     try:
         subprocess.run(
             ["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"],
             check=True,
             stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
+            stderr=subprocess.PIPE,
+            text=True
         )
-        logger.info("Pi-hole restarted successfully.")
     except subprocess.CalledProcessError as e:
-        logger.error(f"Failed to restart Pi-hole: {e}")
+        logger.error(f"Failed to restart Pi-hole FTL: {e.stderr.strip() if e.stderr else e}")
         raise
 
-def execute_db_read(db_path: Path, query: str, params: tuple = ()) -> list[tuple]:
-    assert db_path.exists(), f"Database not found at {db_path}"
+
+def run_git_command(cmd: list[str], repo_dir: Path, capture_output: bool = False) -> subprocess.CompletedProcess:
     try:
-        with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, params)
-            return cursor.fetchall()
-    except sqlite3.Error as e:
-        logger.error(f"Database read error: {e}")
+        return subprocess.run(
+            cmd,
+            cwd=repo_dir,
+            check=True,
+            capture_output=capture_output,
+            text=True
+        )
+    except subprocess.CalledProcessError as e:
+        err_msg = e.stderr.strip() if e.stderr else str(e)
+        logger.error(f"Git command failed standard execution ({' '.join(cmd)}): {err_msg}")
         raise
 
-def execute_db_write(db_path: Path, queries: tuple[tuple[str, list[tuple]], ...]) -> None:
-    assert db_path.exists(), f"Database not found at {db_path}"
-    try:
-        with sqlite3.connect(db_path) as conn:
-            cursor = conn.cursor()
-            for query, params in queries:
-                cursor.executemany(query, params)
-            logger.debug(f"Executed {len(queries)} write operations successfully.")
-    except sqlite3.Error as e:
-        logger.error(f"Database write transaction failed and was rolled back: {e}")
-        raise
 
-# --- Step 1 ---
+# --- Core Processors ---
 
-def fetch_step1_db_entries(db_path: Path) -> frozenset[str]:
-    logger.info("Fetching default whitelist entries with empty comments from gravity.db...")
-    query = """
+def process_step1(db_path: Path, txt_path: Path) -> None:
+    query_select = """
         SELECT d.domain 
         FROM domainlist d
         JOIN domainlist_by_group dg ON d.id = dg.domainlist_id
@@ -90,265 +95,192 @@ def fetch_step1_db_entries(db_path: Path) -> frozenset[str]:
         AND (d.comment IS NULL OR d.comment = '')
         AND g.name = 'Default'
     """
-    rows = execute_db_read(db_path, query)
-    entries = frozenset(sanitize_domain(row[0]) for row in rows)
-    logger.info(f"Found {len(entries)} matching entries in DB.")
-    return entries
-
-def read_whitelist_txt(txt_path: Path) -> frozenset[str]:
-    logger.info(f"Reading existing whitelist file at {txt_path}...")
-    if not txt_path.exists():
-        logger.info("whitelist.txt does not exist in script directory. Returning empty set.")
-        return frozenset()
     
-    try:
-        with open(txt_path, 'r') as f:
-            entries = frozenset(sanitize_domain(line) for line in f if line.strip())
-        logger.info(f"Read {len(entries)} entries from whitelist.txt.")
-        return entries
-    except IOError as e:
-        logger.error(f"Failed to read whitelist.txt: {e}")
-        raise
+    with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=10.0) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query_select)
+        db_entries = frozenset(sanitize_domain(row[0]) for row in cursor.fetchall())
 
-def write_combined_whitelist(txt_path: Path, combined_entries: frozenset[str]) -> None:
-    assert isinstance(combined_entries, frozenset), "Entries must be a frozenset"
-    logger.info(f"Writing {len(combined_entries)} combined entries to {txt_path} atomically...")
-    sorted_entries = sorted(list(combined_entries))
-    
+    txt_entries = frozenset()
+    if txt_path.exists():
+        with open(txt_path, 'r', encoding='utf-8') as f:
+            txt_entries = frozenset(sanitize_domain(line) for line in f if line.strip())
+
+    if not db_entries:
+        logger.info("Step 1: No default DB entries to process.")
+        return
+
+    combined = frozenset(db_entries | txt_entries)
+    sorted_entries = sorted(list(combined))
+
     tmp_path = txt_path.with_suffix('.tmp')
     try:
-        with open(tmp_path, 'w') as f:
+        with open(tmp_path, 'w', encoding='utf-8') as f:
             for entry in sorted_entries:
                 f.write(f"{entry}\n")
         os.replace(tmp_path, txt_path)
-        logger.info("Successfully updated whitelist.txt in script directory.")
-    except IOError as e:
-        logger.error(f"Failed to write combined whitelist: {e}")
+    except Exception as e:
         if tmp_path.exists():
             tmp_path.unlink()
-        raise
+        raise IOError(f"Failed to update whitelist.txt: {e}") from e
 
-def delete_step1_db_entries(db_path: Path, entries: frozenset[str]) -> None:
-    if not entries:
-        return
-    logger.info(f"Deleting {len(entries)} processed entries from gravity.db...")
-    params = [(e,) for e in entries]
-    queries = (
-        ("DELETE FROM domainlist_by_group WHERE domainlist_id IN (SELECT id FROM domainlist WHERE domain = ? AND type = 0)", params),
-        ("DELETE FROM domainlist WHERE domain = ? AND type = 0 AND (comment IS NULL OR comment = '')", params)
-    )
-    execute_db_write(db_path, queries)
-    logger.info("Database cleanup for Step 1 complete.")
+    params = [(e,) for e in db_entries]
+    delete_links = "DELETE FROM domainlist_by_group WHERE domainlist_id IN (SELECT id FROM domainlist WHERE domain = ? AND type = 0)"
+    delete_domains = "DELETE FROM domainlist WHERE domain = ? AND type = 0 AND (comment IS NULL OR comment = '')"
 
-def process_step1(db_path: Path, txt_path: Path) -> None:
-    logger.info("--- Starting Step 1: Default Whitelist Processing ---")
-    try:
-        db_entries = fetch_step1_db_entries(db_path)
-        txt_entries = read_whitelist_txt(txt_path)
-        
-        if not db_entries:
-            logger.info("No DB entries to process for Step 1. Moving on.")
-            return
+    with sqlite3.connect(db_path, timeout=10.0) as conn:
+        cursor = conn.cursor()
+        cursor.executemany(delete_links, params)
+        cursor.executemany(delete_domains, params)
 
-        combined = frozenset(db_entries | txt_entries)
-        write_combined_whitelist(txt_path, combined)
-        
-        delete_step1_db_entries(db_path, db_entries)
-        restart_pihole()
-        logger.info("Step 1 completed successfully.")
-    except Exception as e:
-        logger.critical(f"Step 1 failed: {e}")
-        raise
+    restart_pihole()
+    logger.info(f"Step 1 Complete: Merged {len(db_entries)} default entries into whitelist.txt and cleaned DB.")
 
-# --- Step 2 ---
 
 def extract_categorized_whitelists(db_path: Path) -> dict[str, frozenset[str]]:
-    logger.info("--- Starting Step 2: Extracting Categorized Whitelists ---")
     query = "SELECT domain, comment FROM domainlist WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
-    rows = execute_db_read(db_path, query)
     
+    with sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=10.0) as conn:
+        cursor = conn.cursor()
+        cursor.execute(query)
+        rows = cursor.fetchall()
+
     temp_dict: dict[str, set[str]] = {}
     for domain, comment in rows:
         sanitized_dom = sanitize_domain(domain)
         categories = parse_comment_categories(comment)
-        
         for cat in categories:
-            if cat not in temp_dict:
-                temp_dict[cat] = set()
-            temp_dict[cat].add(sanitized_dom)
-            
-    final_dict: dict[str, frozenset[str]] = {}
-    for cat, domains in temp_dict.items():
-        if len(domains) >= 2:
-            final_dict[cat] = frozenset(domains)
-            
-    logger.info(f"Extracted {len(final_dict)} valid categories with 2+ domains.")
-    return final_dict
+            temp_dict.setdefault(cat, set()).add(sanitized_dom)
 
-def format_filename(category: str) -> str:
-    assert isinstance(category, str) and category, "Category must be a non-empty string"
-    safe_chars = "".join(c for c in category if c.isalnum() or c in (' ', '_', '-')).strip()
-    return re.sub(r'\s+', '_', safe_chars)
+    return {cat: frozenset(domains) for cat, domains in temp_dict.items() if len(domains) >= 2}
+
 
 def write_category_files(repo_dir: Path, categories: dict[str, frozenset[str]]) -> None:
     whitelists_dir = repo_dir / "whitelists"
-    logger.info(f"Writing category files to {whitelists_dir}...")
-    
-    try:
-        whitelists_dir.mkdir(exist_ok=True)
-        assert whitelists_dir.is_dir() and os.access(whitelists_dir, os.W_OK), "Whitelists directory is not writable"
-        
-        for existing_file in whitelists_dir.glob("*.txt"):
-            existing_file.unlink()
-        
-        for category, domains in categories.items():
-            safe_filename = format_filename(category)
-            file_path = whitelists_dir / f"{safe_filename}.txt"
-            tmp_path = whitelists_dir / f"{safe_filename}.tmp"
-            
-            sorted_domains = sorted(list(domains))
-            
-            with open(tmp_path, 'w') as f:
-                for domain in sorted_domains:
-                    f.write(f"{domain}\n")
-            
-            os.replace(tmp_path, file_path)
-            
-        logger.info("Category files generated atomically in script directory.")
-    except Exception as e:
-        logger.error(f"Failed to write category files: {e}")
-        raise
+    whitelists_dir.mkdir(exist_ok=True)
 
-# --- Step 3 ---
+    if not os.access(whitelists_dir, os.W_OK):
+        raise PermissionError(f"Directory {whitelists_dir} is not writable.")
+
+    # Clean stale whitelist text files
+    for existing_file in whitelists_dir.glob("*.txt"):
+        existing_file.unlink()
+
+    for category, domains in categories.items():
+        safe_filename = format_filename(category)
+        file_path = whitelists_dir / f"{safe_filename}.txt"
+        tmp_path = whitelists_dir / f"{safe_filename}.tmp"
+
+        with open(tmp_path, 'w', encoding='utf-8') as f:
+            for domain in sorted(list(domains)):
+                f.write(f"{domain}\n")
+
+        os.replace(tmp_path, file_path)
+
 
 def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> None:
-    logger.info("--- Starting Step 3: Rebuilding Database Groups ---")
-    assert categories, "Categories dictionary cannot be empty"
-    
-    try:
-        with sqlite3.connect(db_path) as conn:
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT id FROM \"group\" WHERE id = 0")
-            assert cursor.fetchone() is not None, "CRITICAL: Default group (id=0) missing!"
-            
-            logger.info("Backing up client group assignments...")
-            cursor.execute("""
-                SELECT cbg.client_id, g.name 
-                FROM client_by_group cbg
-                JOIN "group" g ON cbg.group_id = g.id
-                WHERE g.id != 0
-            """)
-            client_backups = cursor.fetchall()
-            
-            logger.info("Clearing old non-default groups and relationships...")
-            cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
-            cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
-            cursor.execute("DELETE FROM \"group\" WHERE id != 0")
-            
-            logger.info("Inserting new groups in alphabetical order...")
-            # Sort the dictionary keys alphabetically to ensure consistent DB insertion order
-            for cat_name in sorted(categories.keys()):
-                cursor.execute("INSERT INTO \"group\" (name, description) VALUES (?, ?)", 
-                               (cat_name, cat_name))
-                
-            cursor.execute("SELECT id, name FROM \"group\" WHERE id != 0")
-            group_map = {name: gid for gid, name in cursor.fetchall()}
-            
-            logger.info("Re-associating domains with groups...")
-            cursor.execute("SELECT id, domain, comment FROM domainlist")
-            domains_data = cursor.fetchall()
-            
-            domain_group_links = []
-            for d_id, domain, comment in domains_data:
-                if not comment:
-                    continue
-                item_categories = parse_comment_categories(comment)
-                for ic in item_categories:
-                    if ic in group_map:
-                        domain_group_links.append((d_id, group_map[ic]))
-                        
-            cursor.executemany("INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)", domain_group_links)
-            
-            logger.info("Restoring client group assignments...")
-            client_group_links = []
-            for client_id, group_name in client_backups:
-                if group_name in group_map:
-                    client_group_links.append((client_id, group_map[group_name]))
-                    
-            if client_group_links:
-                cursor.executemany("INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)", client_group_links)
-                
-        logger.info("Database groups rebuilt successfully.")
-    except sqlite3.Error as e:
-        logger.critical(f"Failed to rebuild DB groups (Transaction Rolled Back): {e}")
-        raise
+    if not categories:
+        raise ValueError("Categories dictionary cannot be empty during group rebuild.")
 
-# --- Step 4 ---
+    with sqlite3.connect(db_path, timeout=10.0) as conn:
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT id FROM \"group\" WHERE id = 0")
+        if cursor.fetchone() is None:
+            raise RuntimeError("CRITICAL: Pi-hole default group (id=0) missing!")
+
+        # 1. Backup client group assignments for non-default groups
+        cursor.execute("""
+            SELECT cbg.client_id, g.name 
+            FROM client_by_group cbg
+            JOIN "group" g ON cbg.group_id = g.id
+            WHERE g.id != 0
+        """)
+        client_backups = cursor.fetchall()
+
+        # 2. Clear old non-default groups and associations
+        cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
+        cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
+        cursor.execute("DELETE FROM \"group\" WHERE id != 0")
+
+        # 3. Insert new groups strictly in alphabetical order
+        for cat_name in sorted(categories.keys()):
+            cursor.execute("INSERT INTO \"group\" (name, description) VALUES (?, ?)", (cat_name, cat_name))
+
+        cursor.execute("SELECT id, name FROM \"group\" WHERE id != 0")
+        group_map = {name: gid for gid, name in cursor.fetchall()}
+
+        # 4. Re-associate domains across all domain types (whitelists, blacklists, regex)
+        cursor.execute("SELECT id, comment FROM domainlist WHERE comment IS NOT NULL AND comment != ''")
+        domains_data = cursor.fetchall()
+
+        domain_group_links = []
+        for d_id, comment in domains_data:
+            for ic in parse_comment_categories(comment):
+                if ic in group_map:
+                    domain_group_links.append((d_id, group_map[ic]))
+
+        if domain_group_links:
+            cursor.executemany("INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)", domain_group_links)
+
+        # 5. Restore client group assignments matching newly recreated groups
+        client_group_links = [
+            (client_id, group_map[group_name]) 
+            for client_id, group_name in client_backups 
+            if group_name in group_map
+        ]
+        
+        if client_group_links:
+            cursor.executemany("INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)", client_group_links)
+
+    logger.info(f"Steps 2 & 3 Complete: Rebuilt {len(categories)} groups in alphabetical order.")
+
 
 def push_to_github(repo_dir: Path) -> None:
-    logger.info(f"--- Starting Step 4: Pushing to GitHub from {repo_dir} ---")
-    
-    try:
-        assert (repo_dir / ".git").exists(), f"Not a git repository: {repo_dir}"
-        
-        subprocess.run(["git", "add", "."], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        status_check = subprocess.run(
-            ["git", "status", "--porcelain"], 
-            cwd=repo_dir, 
-            capture_output=True, 
-            text=True, 
-            check=True
-        )
-        
-        if not status_check.stdout.strip():
-            logger.info("No modifications detected in the repository. Skipping commit and push.")
-            return
+    if not (repo_dir / ".git").is_dir():
+        raise RuntimeError(f"Directory is not a valid Git repository: {repo_dir}")
 
-        commit_msg = secrets.token_hex(4)
-        logger.info(f"Generated secure commit message: {commit_msg}")
-        
-        subprocess.run(["git", "commit", "-m", commit_msg], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        subprocess.run(["git", "push"], cwd=repo_dir, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        
-        logger.info("Successfully pushed changes to GitHub.")
-    except subprocess.CalledProcessError as e:
-        logger.error(f"Git operation failed: {e}")
-        raise
-    except Exception as e:
-        logger.error(f"Unexpected error during Git execution: {e}")
-        raise
+    run_git_command(["git", "add", "."], repo_dir)
+    status_check = run_git_command(["git", "status", "--porcelain"], repo_dir, capture_output=True)
 
-# --- Main Execution ---
+    if not status_check.stdout.strip():
+        logger.info("Step 4 Complete: No repository changes to commit.")
+        return
+
+    commit_msg = secrets.token_hex(4)
+    run_git_command(["git", "commit", "-m", commit_msg], repo_dir)
+    run_git_command(["git", "push"], repo_dir)
+
+    logger.info("Step 4 Complete: Pushed repository changes to GitHub.")
+
+
+# --- Main Execution Entrypoint ---
 
 def main() -> None:
-    logger.info("=== Pi-hole Whitelist Automation Started ===")
+    logger.info("Pi-hole Whitelist Automation started.")
     try:
         db_path, txt_path, repo_dir = get_base_paths()
-        
+
         process_step1(db_path, txt_path)
-        
+
         categories = extract_categorized_whitelists(db_path)
         if not categories:
-            logger.info("No valid categories found in Step 2. Ending execution early to prevent wiping groups.")
+            logger.info("No valid categories found. Skipping group rebuilding.")
             push_to_github(repo_dir)
             return
-            
+
         write_category_files(repo_dir, categories)
         rebuild_db_groups(db_path, categories)
-        
+
         restart_pihole()
         push_to_github(repo_dir)
-        
-        logger.info("=== Pi-hole Whitelist Automation Completed Successfully ===")
-        
-    except AssertionError as ae:
-        logger.critical(f"Assertion Failure (Constraint violated): {ae}")
+
+        logger.info("Pi-hole Whitelist Automation completed successfully.")
+
     except Exception as e:
-        logger.critical(f"Catastrophic Failure: Script terminated early due to {e}")
-    finally:
-        logging.shutdown()
+        logger.critical(f"Automation process failed: {e}")
+        sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
