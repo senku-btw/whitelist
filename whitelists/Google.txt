@@ -17,7 +17,6 @@ aspmx3.googlemail.com
 books.google.com
 c.pki.goog
 chatenabled.mail.google.com
-chrome.cloudflare-dns.com
 chrome.google.com
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
