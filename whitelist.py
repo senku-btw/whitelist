@@ -235,7 +235,7 @@ def load_healthcheck_whitelist(cfg: AppConfig) -> FrozenSet[str]:
 def extract_categorized_whitelists(
     cfg: AppConfig,
 ) -> Dict[str, FrozenSet[str]]:
-    """Parse database and cluster domains into categories, ignoring 'healthcheck' commented entries."""
+    """Parse database and cluster domains into categories, ignoring exact healthcheck entries."""
     query = (
         "SELECT domain, comment FROM domainlist "
         "WHERE type = 0 AND comment IS NOT NULL AND comment != '' "
@@ -256,7 +256,7 @@ def extract_categorized_whitelists(
         if len(domains) >= 2 or cat.lower() == "healthcheck"
     }
 
-    # Incorporate healthcheck.txt catalog immutably, ignoring any absence from DB
+    # Incorporate healthcheck.txt catalog immutably, ensuring healthcheck group is created
     healthcheck_domains = load_healthcheck_whitelist(cfg)
     if healthcheck_domains:
         categories_result["healthcheck"] = healthcheck_domains
@@ -284,7 +284,7 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Rebuild Pi-hole DB groups safely preserving client associations, ignoring 'healthcheck' comments."""
+    """Rebuild Pi-hole DB groups safely preserving client associations, keeping regex healthcheck entries."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
@@ -317,10 +317,12 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             cursor.execute('SELECT id, name FROM "group" WHERE id != 0')
             group_map = {name: gid for gid, name in cursor.fetchall()}
 
+            # Ignore exact database entries (type 0, 1) with comment 'healthcheck',
+            # but keep regex allow/blacklist entries (type 2, 3) with comment 'healthcheck'.
             cursor.execute(
                 "SELECT id, comment FROM domainlist "
                 "WHERE comment IS NOT NULL AND comment != '' "
-                "AND comment != 'healthcheck'"
+                "AND (comment != 'healthcheck' OR type IN (2, 3))"
             )
             domain_group_links = []
 
