@@ -1,10 +1,8 @@
 0.gravatar.com
 0.wikipedia.com
-adaway.org
 addons.cdn.mozilla.net
 addons.mozilla.org
 adguard.com
-adguardteam.github.io
 amazonaws.com
 anchor.fm
 api.adguard.com
@@ -31,7 +29,6 @@ bbc.co.uk
 bbc.com
 bit.ly
 bitdefender.net
-blocklist.kowabit.de
 bs.to
 bugzilla.mozilla.org
 cacerts.digicert.com
@@ -76,7 +73,6 @@ d.dropbox.com
 dash.cloudflare.com
 dashboard.snapcraft.io
 db.tt
-dbl.oisd.nl
 de.wikipedia.com
 debian.map.fastlydns.net
 debian.org
@@ -108,8 +104,6 @@ dropboxpartners.com
 dropboxstatic.com
 dropboxusercontent.com
 duckduckgo.com
-easylist-downloads.adblockplus.org
-easylist.to
 en.m.wikipedia.com
 en.m.wikipedia.org
 en.wikipedia.com
@@ -125,7 +119,6 @@ feedly.com
 fi.m.wikipedia.com
 fi.wikipedia.com
 filterlists.com
-filters.adtidy.org
 freebsd.org
 ftp.cdnrobot.xyz
 ftp.chocolatey.org
@@ -147,7 +140,6 @@ github-production-user-asset-6210df.s3.amazonaws.com
 github.blog
 github.com
 github.community
-github.developerdan.com
 github.io
 githubapp.com
 githubassets.com
@@ -157,15 +149,11 @@ gitlab.io
 gitter.im
 gravatar.com
 greasyfork.org
-guardianproject.gitlab.io
 guardianproject.info
 gumtree.com
 gumtree.com.au
 hash.github.com
 he.wikipedia.com
-hosts-file.net
-hosts.anudeep.me
-hostsfile.mine.nu
 hostsfile.org
 hu.wikipedia.com
 humblebundle.com
@@ -182,7 +170,6 @@ img.xda-developers.com
 imgix.net
 intel.com
 intel.com.au
-iplists.firehol.org
 it.wikipedia.com
 jboss.org
 jp.wikipedia.com
@@ -239,8 +226,6 @@ opensuse.org
 paypal.com
 paypal.de
 pdst.fm
-pgl.yoyo.org
-phishing.army
 pi-hole.net
 pl.wikipedia.com
 placehold.it
@@ -256,7 +241,6 @@ proxer.me
 pscrb.fm
 push.chocolatey.org
 raindrop.io
-ransomwaretracker.abuse.ch
 raw.github.com
 raw.githubusercontent.com
 redhat.com
@@ -266,7 +250,6 @@ search.vimeo.com
 secure.gravatar.com
 snapcraft.io
 softwarecollections.org
-someonewhocares.org
 sourceforge.net
 speedtest.net
 static.opensuse.org
@@ -294,7 +277,6 @@ support.system76.com
 support2.kaspersky.com
 susecloud.net
 sv.wikipedia.com
-sysctl.org
 ta.wikipedia.com
 themes.mozilla.org
 themoviedb.com
@@ -311,7 +293,6 @@ upload.vimeo.com
 upload.wikimedia.org
 use.fontawesome.com
 user-images.githubusercontent.com
-v.firebog.net
 vimeo.com
 vimeocdn.com
 virtualbox.org
@@ -324,10 +305,7 @@ vscode-sync.trafficmanager.net
 wikimedia.org
 wikipedia.com
 wikipedia.org
-winhelp2002.mvps.org
 wordpress.com
 wordpress.org
-www.github.developerdan.com
 www.gravatar.com
 www.xda-developers.com
-zeustracker.abuse.ch
