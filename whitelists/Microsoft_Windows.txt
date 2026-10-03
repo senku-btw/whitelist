@@ -1,6 +1,10 @@
+1storecatalogrevocation.storequality.microsoft.com
+2.au.download.windowsupdate.com
 account.live.com
 acctcdn.msauth.net
 acctcdn.msftauth.net
+au.download.windowsupdate.com
+au.v4.download.windowsupdate.com
 auth.microsoft.com
 browser.pipe.aria.microsoft.com
 c.msn.com
@@ -8,7 +12,16 @@ c.s-microsoft.com
 ccs.login.microsoftonline.com
 ctldl.windowsupdate.com
 dc.services.visualstudio.com
+displaycatalog.mp.microsoft.com
+dl.delivery.mp.microsoft.com
+dns.msftncsi.com
+download.windowsupdate.com
+ds.download.windowsupdate.com
+fe3.delivery.dsp.mp.microsoft.com.nsatc.net
+g.live.com
+geo-prod.do.dsp.mp.microsoft.com
 i.s-microsoft.com
+ipv6.msftncsi.com
 login.live.com
 login.microsoftonline.com
 mem.gfx.ms
@@ -17,40 +30,18 @@ msftncsi.com
 officeclient.microsoft.com
 outlook.office365.com
 products.office.com
+sls.update.microsoft.com.akadns.net
 smartscreen-prod.microsoft.com
 smartscreen.microsoft.com
+store-images.microsoft.com
+store-images.s-microsoft.com
+storecatalogrevocation.storequality.microsoft.com
+storeedgefd.dsx.mp.microsoft.com
+tlu.dl.delivery.mp.microsoft.com
 tsfe.trafficshaping.dsp.mp.microsoft.com
 wcpstatic.microsoft.com
 wdcp.microsoft.com
 wdcpalt.microsoft.com
 wns.windows.com
-
-# Bitlocker
-g.live.com
-
-# Connectivity Check
-dns.msftncsi.com
-ipv6.msftncsi.com
 www.msftconnecttest.com
 www.msftncsi.com
-
-# Windows Store
-1storecatalogrevocation.storequality.microsoft.com
-displaycatalog.mp.microsoft.com
-dl.delivery.mp.microsoft.com
-fe3.delivery.dsp.mp.microsoft.com.nsatc.net
-geo-prod.do.dsp.mp.microsoft.com
-sls.update.microsoft.com.akadns.net
-store-images.s-microsoft.com
-storecatalogrevocation.storequality.microsoft.com
-storeedgefd.dsx.mp.microsoft.com
-tlu.dl.delivery.mp.microsoft.com
-
-# Windows Updates
-2.au.download.windowsupdate.com
-au.download.windowsupdate.com
-au.v4.download.windowsupdate.com
-download.windowsupdate.com
-ds.download.windowsupdate.com
-store-images.microsoft.com
-

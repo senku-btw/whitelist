@@ -1,6 +1,5 @@
 api.facebook.com
 b-api.facebook.com
-b-graph.facebook.com
 b-www.facebook.com
 beta.facebook.com
 bigzipfiles.facebook.com
@@ -21,8 +20,6 @@ external-lhr8-1.xx.fbcdn.net
 external-lhr9-1.xx.fbcdn.net
 fb.me
 fbcdn-creative-a.akamaihd.net
-graph.accountkit.com
-graph.facebook.com
 l.facebook.com
 lm.facebook.com
 m.facebook.com

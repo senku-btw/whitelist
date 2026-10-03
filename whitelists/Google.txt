@@ -1,8 +1,11 @@
 0.client-channel.google.com
 accounts.google.com
 ajax.googleapis.com
+android.clients.google.com
 android.com
+android.googleapis.com
 androidtvchannels-pa.googleapis.com
+androidtvwatsonfe-pa.googleapis.c
 androidtvwatsonfe-pa.googleapis.com
 appengine.google.com
 appsbackup-pa.clients6.google.com
@@ -15,6 +18,7 @@ books.google.com
 c.pki.goog
 chatenabled.mail.google.com
 chrome.cloudflare-dns.com
+chrome.google.com
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
 ci4.googleusercontent.com
@@ -29,11 +33,13 @@ clients6.google.com
 cloud.google.com
 code.google.com
 connectivitycheck.android.com
+connectivitycheck.gstatic.com
 console.cloud.google.com
 contacts.google.com
 cse.google.com
 developers.google.com
 device-provisioning.googleapis.com
+dl.google.com
 docs.google.com
 drive.google.com
 encrypted-tbn2.gstatic.com
@@ -56,6 +62,7 @@ id.google.com
 images.google.com
 imasdk.googleapis.com
 inbox.google.com
+instantmessaging-pa.googleapis.com
 lh3.google.com
 lh3.googleusercontent.com
 lh4.google.com
@@ -67,11 +74,16 @@ mail.plus.google.com
 maps.google.com
 maps.googleapis.com
 maps.gstatic.com
+mtalk.google.com
 myaccount.google.com
 news.google.com
 notifications.google.com
 oauthaccountmanager.googleapis.com
 pki-goog.l.google.com
+play-fe.googleapis.com
+play-lh.googleusercontent.com
+play.google.com
+play.googleapis.com
 redirector.gvt1.com
 redirector.gvt2.com
 script.google.com
@@ -88,28 +100,8 @@ talkx.l.google.com
 translate.google.com
 update.googleapis.com
 video.google.com
+webcache.googleusercontent.com
 www.google.com
 xmpp-server.l.google.com
 youtube.l.google.com
 ytimg.l.google.com
-
-# Google Chrome
-chrome.google.com
-dl.google.com
-webcache.googleusercontent.com
-
-# Google Play Store
-android.clients.google.com
-android.googleapis.com
-play-fe.googleapis.com
-play-lh.googleusercontent.com
-play.google.com
-play.googleapis.com
-
-# Network Connectivity
-connectivitycheck.gstatic.com
-
-# Push Notifications
-instantmessaging-pa.googleapis.com
-mtalk.google.com
-
