@@ -302,7 +302,7 @@ def main() -> None:
         rebuild_db_groups(cfg, categories)
 
         # Trigger Pi-hole hot reload so DB changes affect active resolution
-        run_command(["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"], timeout=cfg.subprocess_timeout)
+        run_command(["docker", "exec", "pihole", "pihole", "reloadlists"], timeout=cfg.subprocess_timeout)
         
         push_to_github(cfg)
         logger.info("Automation sequence completed successfully.")
