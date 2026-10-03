@@ -285,11 +285,9 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
         file_path = cfg.whitelists_dir / f"{safe_filename}.txt"
         write_atomic(file_path, sorted(list(domains)))
 
-
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely preserving client associations,
-
-    keeping regex healthcheck entries.
+    keeping regex healthcheck entries, and exclusively assigning healthcheck allowlists.
     """
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
@@ -315,6 +313,11 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             cursor.execute('DELETE FROM "group" WHERE id != 0')
 
             sorted_categories = sorted(categories.keys())
+            
+            # Ensure healthcheck group exists for assignment
+            if "healthcheck" not in sorted_categories:
+                sorted_categories.append("healthcheck")
+
             cursor.executemany(
                 'INSERT INTO "group" (name, description) VALUES (?, ?)',
                 [(cat, cat) for cat in sorted_categories],
@@ -322,9 +325,9 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             cursor.execute('SELECT id, name FROM "group" WHERE id != 0')
             group_map = {name: gid for gid, name in cursor.fetchall()}
+            hc_group_id = group_map.get("healthcheck")
 
-            # Ignore exact database entries (type 0, 1) with comment 'healthcheck',
-            # but keep regex allow/blacklist entries (type 2, 3) with comment 'healthcheck'.
+            # Standard group assignment for domains
             cursor.execute(
                 "SELECT id, comment FROM domainlist "
                 "WHERE comment IS NOT NULL AND comment != '' "
@@ -344,6 +347,27 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     domain_group_links,
                 )
 
+            # Exclusively assign healthcheck/healtcheck allowlists to the healthcheck group
+            cursor.execute(
+                "SELECT id FROM domainlist "
+                "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
+                "AND type IN (0, 2)"
+            )
+            hc_allowlists = [row[0] for row in cursor.fetchall()]
+
+            if hc_allowlists and hc_group_id is not None:
+                # Remove from all other groups, including the default group 0
+                cursor.executemany(
+                    "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
+                    [(d_id,) for d_id in hc_allowlists]
+                )
+                # Assign exclusively to the healthcheck group
+                cursor.executemany(
+                    "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
+                    [(d_id, hc_group_id) for d_id in hc_allowlists]
+                )
+
+            # Restore client associations
             client_group_links = [
                 (client_id, group_map[group_name])
                 for client_id, group_name in client_backups
@@ -365,6 +389,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
         raise RuntimeError(
             f"Database transaction failed during group rebuild: {exc}"
         ) from exc
+
 
 
 def push_to_github(cfg: AppConfig) -> None:
