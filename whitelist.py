@@ -160,7 +160,7 @@ def process_step1(cfg: AppConfig) -> None:
     except sqlite3.Error as e:
         raise RuntimeError(f"Database deletion transaction failed: {e}") from e
 
-    run_command(["docker", "exec", "pihole", "pihole", "restartdns", "reload-lists"], timeout=cfg.subprocess_timeout)
+    run_command(["docker", "exec", "pihole", "pihole", "reloadlists"], timeout=cfg.subprocess_timeout)
     logger.info(f"Step 1 Complete: Extracted and merged {len(db_entries)} entries.")
 
 
