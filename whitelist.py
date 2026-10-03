@@ -215,13 +215,31 @@ def process_step1(cfg: AppConfig) -> None:
     logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
 
 
+def load_healthcheck_whitelist(cfg: AppConfig) -> FrozenSet[str]:
+    """Read healthcheck.txt immutably if present, ignoring DB absence."""
+    healthcheck_path = cfg.whitelists_dir / "healthcheck.txt"
+    if not healthcheck_path.is_file():
+        return frozenset()
+    try:
+        with open(healthcheck_path, "r", encoding="utf-8") as file_obj:
+            domains = frozenset(
+                sanitize_domain(line) for line in file_obj if line.strip()
+            )
+            logger.info("Cataloged %d entries from immutable healthcheck.txt.", len(domains))
+            return domains
+    except IOError as exc:
+        logger.warning("Failed to read healthcheck.txt: %s", exc)
+        return frozenset()
+
+
 def extract_categorized_whitelists(
     cfg: AppConfig,
 ) -> Dict[str, FrozenSet[str]]:
-    """Parse database and cluster domains into categories."""
+    """Parse database and cluster domains into categories, ignoring 'healthcheck' commented entries."""
     query = (
         "SELECT domain, comment FROM domainlist "
-        "WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
+        "WHERE type = 0 AND comment IS NOT NULL AND comment != '' "
+        "AND comment != 'healthcheck'"
     )
     rows = execute_read(cfg, query)
 
@@ -232,28 +250,41 @@ def extract_categorized_whitelists(
         for cat in categories:
             temp_dict.setdefault(cat, set()).add(sanitized_dom)
 
-    return {
+    categories_result = {
         cat: frozenset(domains)
         for cat, domains in temp_dict.items()
-        if len(domains) >= 2
+        if len(domains) >= 2 or cat.lower() == "healthcheck"
     }
+
+    # Incorporate healthcheck.txt catalog immutably, ignoring any absence from DB
+    healthcheck_domains = load_healthcheck_whitelist(cfg)
+    if healthcheck_domains:
+        categories_result["healthcheck"] = healthcheck_domains
+
+    return categories_result
 
 
 def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Write generated categories to physical category files."""
+    """Write generated categories to physical category files, protecting healthcheck.txt."""
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
+        if existing_file.name.lower() == "healthcheck.txt":
+            continue
         existing_file.unlink()
 
     for category, domains in categories.items():
+        if category.lower() == "healthcheck":
+            # Immutable file: never delete entries, never add entries, never overwrite.
+            logger.info("Skipping write/overwrite for immutable file: healthcheck.txt")
+            continue
         safe_filename = format_filename(category)
         file_path = cfg.whitelists_dir / f"{safe_filename}.txt"
         write_atomic(file_path, sorted(list(domains)))
 
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Rebuild Pi-hole DB groups safely preserving client associations."""
+    """Rebuild Pi-hole DB groups safely preserving client associations, ignoring 'healthcheck' comments."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
@@ -288,7 +319,8 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             cursor.execute(
                 "SELECT id, comment FROM domainlist "
-                "WHERE comment IS NOT NULL AND comment != ''"
+                "WHERE comment IS NOT NULL AND comment != '' "
+                "AND comment != 'healthcheck'"
             )
             domain_group_links = []
 
