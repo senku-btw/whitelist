@@ -171,7 +171,7 @@ def execute_deletions(
     cfg: AppConfig,
     delete_links_sql: str,
     delete_domains_sql: str,
-    params: List[Tuple[str]],
+    params: List[Tuple[str, ...]],
     err_context: str,
 ) -> None:
     """Execute domain and link deletion queries within a transaction."""
@@ -399,17 +399,32 @@ def _recreate_groups(
 
 
 def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
-    """Link non-exclusive domainlist entries to comment categories."""
+    """Link non-exclusive domainlist entries exclusively to comment categories."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
         "WHERE comment IS NOT NULL AND comment != '' "
         "AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (2, 3))"
     )
-    domain_group_links = []
+
+    domain_ids_to_clear: Set[int] = set()
+    domain_group_links: List[Tuple[int, int]] = []
+
     for d_id, comment in cursor.fetchall():
-        for tag in parse_comment_categories(comment):
-            if tag in group_map:
-                domain_group_links.append((d_id, group_map[tag]))
+        matched_gids = [
+            group_map[tag]
+            for tag in parse_comment_categories(comment)
+            if tag in group_map
+        ]
+        if matched_gids:
+            domain_ids_to_clear.add(d_id)
+            for gid in matched_gids:
+                domain_group_links.append((d_id, gid))
+
+    if domain_ids_to_clear:
+        cursor.executemany(
+            "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
+            [(d_id,) for d_id in domain_ids_to_clear],
+        )
 
     if domain_group_links:
         cursor.executemany(
