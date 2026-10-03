@@ -246,8 +246,9 @@ def rebuild_db_groups(db_path: Path, categories: dict[str, frozenset[str]]) -> N
             cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM \"group\" WHERE id != 0")
             
-            logger.info("Inserting new groups...")
-            for cat_name in categories.keys():
+            logger.info("Inserting new groups in alphabetical order...")
+            # Sort the dictionary keys alphabetically to ensure consistent DB insertion order
+            for cat_name in sorted(categories.keys()):
                 cursor.execute("INSERT INTO \"group\" (name, description) VALUES (?, ?)", 
                                (cat_name, cat_name))
                 
