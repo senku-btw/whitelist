@@ -1,10 +1,10 @@
 import sqlite3
 import subprocess
 import os
-import secrets
 import re
 import logging
 import sys
+import tempfile
 from pathlib import Path
 from dataclasses import dataclass
 from typing import Iterable, List, Dict, FrozenSet, Tuple, Optional
@@ -31,7 +31,11 @@ class AppConfig:
 
     @classmethod
     def load(cls) -> 'AppConfig':
-        db_path = Path("/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db")
+        default_db_path = os.getenv(
+            "PIHOLE_DB_PATH", 
+            "/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db"
+        )
+        db_path = Path(default_db_path)
         repo_dir = Path(__file__).resolve().parent
         
         if not db_path.is_file():
@@ -67,7 +71,6 @@ def format_filename(category: str) -> str:
     return re.sub(r'\s+', '_', safe_chars)
 
 def run_command(cmd: List[str], cwd: Optional[Path] = None, capture_output: bool = False, timeout: int = 30) -> subprocess.CompletedProcess:
-    """Executes a system command securely with timeouts to prevent hanging."""
     try:
         return subprocess.run(
             cmd,
@@ -86,19 +89,19 @@ def run_command(cmd: List[str], cwd: Optional[Path] = None, capture_output: bool
         raise RuntimeError(f"Command execution failed: {err_msg}") from e
 
 def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
-    """Writes data to a temporary file, syncs to disk, sets permissions, and renames atomically."""
-    tmp_path = filepath.with_suffix(f".tmp.{secrets.token_hex(4)}")
+    filepath.parent.mkdir(parents=True, exist_ok=True)
     try:
-        with open(tmp_path, 'w', encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(mode='w', dir=filepath.parent, delete=False, encoding='utf-8') as f:
+            tmp_path = Path(f.name)
             for line in lines:
                 f.write(f"{line}\n")
             f.flush()
-            os.fsync(f.fileno()) # Ensure data is physically written to storage
+            os.fsync(f.fileno()) 
             
-        os.chmod(tmp_path, 0o644) # Restrict permissions to owner rw, group/others r
-        os.replace(tmp_path, filepath) # Atomic POSIX rename
+        os.chmod(tmp_path, 0o644) 
+        os.replace(tmp_path, filepath) 
     except Exception as e:
-        if tmp_path.exists():
+        if 'tmp_path' in locals() and tmp_path.exists():
             tmp_path.unlink()
         raise IOError(f"Atomic write failed for {filepath}: {e}") from e
 
@@ -118,7 +121,6 @@ def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
 # --- Business Logic ---
 
 def process_step1(cfg: AppConfig) -> None:
-    """Step 1: Merge default DB entries into whitelist.txt and remove them from DB."""
     query = """
         SELECT d.domain 
         FROM domainlist d
@@ -147,7 +149,6 @@ def process_step1(cfg: AppConfig) -> None:
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
 
-    # Perform DB deletion within an isolated transaction
     params = [(e,) for e in db_entries]
     delete_links = "DELETE FROM domainlist_by_group WHERE domainlist_id IN (SELECT id FROM domainlist WHERE domain = ? AND type = 0)"
     delete_domains = "DELETE FROM domainlist WHERE domain = ? AND type = 0 AND (comment IS NULL OR comment = '')"
@@ -165,7 +166,6 @@ def process_step1(cfg: AppConfig) -> None:
 
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
-    """Step 2a: Parse database and cluster domains into categories."""
     query = "SELECT domain, comment FROM domainlist WHERE type = 0 AND comment IS NOT NULL AND comment != ''"
     rows = execute_read(cfg, query)
 
@@ -180,11 +180,7 @@ def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
 
 
 def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Step 2b: Write generated categories to physical files securely."""
-    cfg.whitelists_dir.mkdir(exist_ok=True, mode=0o755)
-
-    if not os.access(cfg.whitelists_dir, os.W_OK):
-        raise PermissionError(f"Directory lacks write permissions: {cfg.whitelists_dir}")
+    cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
         existing_file.unlink()
@@ -196,10 +192,8 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Step 3: Rebuild Pi-hole DB groups safely preserving client associations."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
-            # Enforce foreign key constraints at SQLite level
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
 
@@ -207,7 +201,6 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             if cursor.fetchone() is None:
                 raise RuntimeError("Integrity Error: Default group (id=0) missing from Pi-hole database.")
 
-            # Backup client assignments
             cursor.execute("""
                 SELECT cbg.client_id, g.name 
                 FROM client_by_group cbg
@@ -216,12 +209,10 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             """)
             client_backups = cursor.fetchall()
 
-            # Purge dynamic groups and associations (excluding Default)
             cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM \"group\" WHERE id != 0")
 
-            # Insert groups in strict alphabetical order
             sorted_categories = sorted(categories.keys())
             cursor.executemany(
                 "INSERT INTO \"group\" (name, description) VALUES (?, ?)", 
@@ -231,7 +222,6 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             cursor.execute("SELECT id, name FROM \"group\" WHERE id != 0")
             group_map = {name: gid for gid, name in cursor.fetchall()}
 
-            # Re-map domains across all types based on tags
             cursor.execute("SELECT id, comment FROM domainlist WHERE comment IS NOT NULL AND comment != ''")
             domain_group_links = []
             
@@ -246,7 +236,6 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     domain_group_links
                 )
 
-            # Restore client assignments to the rebuilt groups
             client_group_links = [
                 (client_id, group_map[group_name]) 
                 for client_id, group_name in client_backups 
@@ -265,20 +254,24 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
 
 def push_to_github(cfg: AppConfig) -> None:
-    """Step 4: Commit and push infrastructure changes to origin."""
     if not (cfg.repo_dir / ".git").is_dir():
         raise RuntimeError(f"Not a valid Git repository: {cfg.repo_dir}")
 
-    run_command(["git", "add", "."], cwd=cfg.repo_dir, timeout=cfg.subprocess_timeout)
+    # Explicitly add only the required files to prevent sensitive data leaks
+    run_command(
+        ["git", "add", str(cfg.whitelist_txt_path.name), str(cfg.whitelists_dir.name)], 
+        cwd=cfg.repo_dir, 
+        timeout=cfg.subprocess_timeout
+    )
     
     status = run_command(["git", "status", "--porcelain"], cwd=cfg.repo_dir, capture_output=True, timeout=cfg.subprocess_timeout)
     if not status.stdout.strip():
         logger.info("Step 4 Complete: No file modifications detected. Skipping Git push.")
         return
 
-    commit_msg = f"auto-update-{secrets.token_hex(4)}"
+    commit_msg = f"auto-update-{os.urandom(4).hex()}"
     run_command(["git", "commit", "-m", commit_msg], cwd=cfg.repo_dir, timeout=cfg.subprocess_timeout)
-    run_command(["git", "push"], cwd=cfg.repo_dir, timeout=cfg.subprocess_timeout * 2) # Network ops need more time
+    run_command(["git", "push"], cwd=cfg.repo_dir, timeout=cfg.subprocess_timeout * 2) 
 
     logger.info(f"Step 4 Complete: Pushed commit '{commit_msg}' to GitHub.")
 
@@ -301,7 +294,6 @@ def main() -> None:
         write_category_files(cfg, categories)
         rebuild_db_groups(cfg, categories)
 
-        # Trigger Pi-hole hot reload so DB changes affect active resolution
         run_command(["docker", "exec", "pihole", "pihole", "reloadlists"], timeout=cfg.subprocess_timeout)
         
         push_to_github(cfg)
