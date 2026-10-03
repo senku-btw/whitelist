@@ -1,10 +1,8 @@
 a.root-servers.net
 b.root-servers.net
 c.root-servers.net
-cloudflare-dns.com
 cloudflare.com
 d.root-servers.net
-dns.google
 dns.quad9.net
 e.root-servers.net
 f.root-servers.net
