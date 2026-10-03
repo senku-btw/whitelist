@@ -11,6 +11,54 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, FrozenSet, Iterable, List, Optional, Set, Tuple
 
+# --- Production Constants ---
+DEFAULT_GROUP_ID = 0
+DOMAIN_TYPE_EXACT = 0
+DOMAIN_TYPE_REGEX = 2
+DOMAIN_TYPE_WILDCARD = 3
+ADLIST_TYPE = 1
+
+IMMUTABLE_CATEGORIES = frozenset({"healthcheck", "hosts"})
+
+# --- SQL Queries ---
+SQL_GET_DEFAULT_ENTRIES = """
+    SELECT d.domain
+    FROM domainlist d
+    JOIN domainlist_by_group dg ON d.id = dg.domainlist_id
+    JOIN "group" g ON dg.group_id = g.id
+    WHERE d.type = ?
+    AND (d.comment IS NULL OR d.comment = '')
+    AND g.name = 'Default'
+"""
+
+SQL_DELETE_LINKS = """
+    DELETE FROM {table} WHERE {fk_col} IN 
+    (SELECT id FROM {base_table} WHERE domain = ? AND type = ? {extra_cond})
+"""
+
+SQL_DELETE_DOMAINS = """
+    DELETE FROM {base_table} WHERE domain = ? AND type = ? {extra_cond}
+"""
+
+SQL_GET_CATEGORIZED_DOMAINS = """
+    SELECT domain, comment FROM domainlist 
+    WHERE type = ? AND comment IS NOT NULL AND comment != '' 
+    AND comment NOT IN ('healthcheck', 'hosts')
+"""
+
+SQL_GET_STANDARD_DOMAINS = """
+    SELECT id, comment FROM domainlist 
+    WHERE comment IS NOT NULL AND comment != '' 
+    AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (?, ?))
+"""
+
+SQL_GET_CLIENT_BACKUPS = """
+    SELECT cbg.client_id, g.name
+    FROM client_by_group cbg
+    JOIN "group" g ON cbg.group_id = g.id
+    WHERE g.id != ?
+"""
+
 # --- Production Logging Setup ---
 logger = logging.getLogger("PiholeWhitelistManager")
 logger.setLevel(logging.INFO)
@@ -144,8 +192,8 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
             f.flush()
             os.fsync(f.fileno())
 
-        os.chmod(tmp_path, 0o644)
-        os.replace(tmp_path, filepath)
+        tmp_path.chmod(0o644)
+        tmp_path.replace(filepath)
     except Exception as exc:
         if tmp_path is not None and tmp_path.exists():
             tmp_path.unlink()
@@ -191,17 +239,7 @@ def execute_deletions(
 
 def process_step1(cfg: AppConfig) -> None:
     """Merge default DB entries into whitelist.txt and remove them from DB."""
-    query = """
-        SELECT d.domain
-        FROM domainlist d
-        JOIN domainlist_by_group dg ON d.id = dg.domainlist_id
-        JOIN "group" g ON dg.group_id = g.id
-        WHERE d.type = 0
-        AND (d.comment IS NULL OR d.comment = '')
-        AND g.name = 'Default'
-    """
-
-    db_entries_raw = execute_read(cfg, query)
+    db_entries_raw = execute_read(cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
     if not db_entries:
@@ -221,14 +259,17 @@ def process_step1(cfg: AppConfig) -> None:
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
 
-    params = [(e,) for e in db_entries]
-    delete_links = (
-        "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
-        "(SELECT id FROM domainlist WHERE domain = ? AND type = 0)"
+    params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
+    
+    delete_links = SQL_DELETE_LINKS.format(
+        table="domainlist_by_group", 
+        fk_col="domainlist_id", 
+        base_table="domainlist",
+        extra_cond=""
     )
-    delete_domains = (
-        "DELETE FROM domainlist WHERE domain = ? "
-        "AND type = 0 AND (comment IS NULL OR comment = '')"
+    delete_domains = SQL_DELETE_DOMAINS.format(
+        base_table="domainlist",
+        extra_cond="AND (comment IS NULL OR comment = '')"
     )
 
     execute_deletions(cfg, delete_links, delete_domains, params, "step 1")
@@ -242,8 +283,8 @@ def process_step1(cfg: AppConfig) -> None:
 
 def process_immutable_hosts(cfg: AppConfig) -> None:
     """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt."""
-    query = "SELECT domain FROM domainlist WHERE type = 0 AND comment = 'hosts'"
-    db_entries_raw = execute_read(cfg, query)
+    query = "SELECT domain FROM domainlist WHERE type = ? AND comment = 'hosts'"
+    db_entries_raw = execute_read(cfg, query, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
     hosts_path = cfg.whitelists_dir / "hosts.txt"
@@ -265,13 +306,17 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(hosts_path, combined_entries)
 
-    params = [(e,) for e in db_entries]
-    delete_links = (
-        "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
-        "(SELECT id FROM domainlist WHERE domain = ? AND type = 0 AND comment = 'hosts')"
+    params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
+    
+    delete_links = SQL_DELETE_LINKS.format(
+        table="domainlist_by_group", 
+        fk_col="domainlist_id", 
+        base_table="domainlist",
+        extra_cond="AND comment = 'hosts'"
     )
-    delete_domains = (
-        "DELETE FROM domainlist WHERE domain = ? AND type = 0 AND comment = 'hosts'"
+    delete_domains = SQL_DELETE_DOMAINS.format(
+        base_table="domainlist",
+        extra_cond="AND comment = 'hosts'"
     )
 
     execute_deletions(cfg, delete_links, delete_domains, params, "hosts")
@@ -303,12 +348,7 @@ def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
     """Parse DB and cluster domains into categories, ignoring immutables."""
-    query = (
-        "SELECT domain, comment FROM domainlist "
-        "WHERE type = 0 AND comment IS NOT NULL AND comment != '' "
-        "AND comment NOT IN ('healthcheck', 'hosts')"
-    )
-    rows = execute_read(cfg, query)
+    rows = execute_read(cfg, SQL_GET_CATEGORIZED_DOMAINS, (DOMAIN_TYPE_EXACT,))
 
     temp_dict: Dict[str, Set[str]] = {}
     for domain, comment in rows:
@@ -320,10 +360,10 @@ def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
     categories_result = {
         cat: frozenset(domains)
         for cat, domains in temp_dict.items()
-        if len(domains) >= 2 or cat.lower() in ("healthcheck", "hosts")
+        if len(domains) >= 2 or cat.lower() in IMMUTABLE_CATEGORIES
     }
 
-    for immutable_cat in ["healthcheck", "hosts"]:
+    for immutable_cat in IMMUTABLE_CATEGORIES:
         immutable_domains = load_immutable_whitelist(cfg, f"{immutable_cat}.txt")
         if immutable_domains:
             categories_result[immutable_cat] = immutable_domains
@@ -336,12 +376,12 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
-        if existing_file.name.lower() in ("healthcheck.txt", "hosts.txt"):
+        if existing_file.stem.lower() in IMMUTABLE_CATEGORIES:
             continue
         existing_file.unlink()
 
     for category, domains in categories.items():
-        if category.lower() in ("healthcheck", "hosts"):
+        if category.lower() in IMMUTABLE_CATEGORIES:
             logger.info(
                 "Skipping write/overwrite for immutable file: %s.txt",
                 category.lower(),
@@ -375,36 +415,31 @@ def _recreate_groups(
     cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
 ) -> Dict[str, int]:
     """Rebuild non-default group definitions and return group map."""
-    cursor.execute('SELECT id FROM "group" WHERE id = 0')
+    cursor.execute('SELECT id FROM "group" WHERE id = ?', (DEFAULT_GROUP_ID,))
     if cursor.fetchone() is None:
-        raise RuntimeError("Integrity Error: Default group (id=0) missing.")
+        raise RuntimeError(f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing.")
 
-    cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
-    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
-    cursor.execute('DELETE FROM "group" WHERE id != 0')
+    cursor.execute("DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
+    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
+    cursor.execute('DELETE FROM "group" WHERE id != ?', (DEFAULT_GROUP_ID,))
 
     sorted_categories = sorted(categories.keys())
-    if "healthcheck" not in sorted_categories:
-        sorted_categories.append("healthcheck")
-    if "hosts" not in sorted_categories:
-        sorted_categories.append("hosts")
+    for req_cat in IMMUTABLE_CATEGORIES:
+        if req_cat not in sorted_categories:
+            sorted_categories.append(req_cat)
 
     cursor.executemany(
         'INSERT INTO "group" (name, description) VALUES (?, ?)',
         [(cat, cat) for cat in sorted_categories],
     )
 
-    cursor.execute('SELECT id, name FROM "group" WHERE id != 0')
+    cursor.execute('SELECT id, name FROM "group" WHERE id != ?', (DEFAULT_GROUP_ID,))
     return {name: gid for gid, name in cursor.fetchall()}
 
 
 def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
     """Link non-exclusive domainlist entries exclusively to comment categories."""
-    cursor.execute(
-        "SELECT id, comment FROM domainlist "
-        "WHERE comment IS NOT NULL AND comment != '' "
-        "AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (2, 3))"
-    )
+    cursor.execute(SQL_GET_STANDARD_DOMAINS, (DOMAIN_TYPE_REGEX, DOMAIN_TYPE_WILDCARD))
 
     domain_ids_to_clear: Set[int] = set()
     domain_group_links: List[Tuple[int, int]] = []
@@ -441,14 +476,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
 
-            cursor.execute(
-                """
-                SELECT cbg.client_id, g.name
-                FROM client_by_group cbg
-                JOIN "group" g ON cbg.group_id = g.id
-                WHERE g.id != 0
-            """
-            )
+            cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
             client_backups = cursor.fetchall()
 
             group_map = _recreate_groups(cursor, categories)
@@ -464,7 +492,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     fk_col="domainlist_id",
                     comments=("healthcheck", "healtcheck"),
                     group_id=hc_gid,
-                    type_cond="type IN (0, 2)",
+                    type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
                 ),
                 GroupAssignmentSpec(
                     table="domainlist",
@@ -472,7 +500,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     fk_col="domainlist_id",
                     comments=("hosts",),
                     group_id=hosts_gid,
-                    type_cond="type IN (0, 2)",
+                    type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
                 ),
                 GroupAssignmentSpec(
                     table="adlist",
@@ -480,7 +508,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     fk_col="adlist_id",
                     comments=("healthcheck", "healtcheck"),
                     group_id=hc_gid,
-                    type_cond="type = 1",
+                    type_cond=f"type = {ADLIST_TYPE}",
                 ),
                 GroupAssignmentSpec(
                     table="adlist",
@@ -488,7 +516,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     fk_col="adlist_id",
                     comments=("hosts",),
                     group_id=hosts_gid,
-                    type_cond="type = 1",
+                    type_cond=f"type = {ADLIST_TYPE}",
                 ),
             ]
 
@@ -552,19 +580,20 @@ def push_to_github(cfg: AppConfig) -> None:
     )
 
     try:
-        with subprocess.Popen(
+        # Use start_new_session=True to cleanly detach the background process
+        subprocess.Popen(
             ["git", "push"],
             cwd=cfg.repo_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-        ):
-            pass
+            start_new_session=True, 
+        )
         logger.info(
             "Step 4 Complete: Commit '%s' created and push dispatched.",
             commit_msg,
         )
     except Exception as exc:
-        logger.error("Failed to start background git push: %s", exc)
+        logger.error("Failed to start background git push: %s", exc, exc_info=True)
         raise RuntimeError(f"Background push failed: {exc}") from exc
 
 
@@ -598,7 +627,7 @@ def main() -> None:
         logger.info("Automation sequence completed successfully.")
 
     except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.critical("FATAL ERROR: %s", exc)
+        logger.critical("FATAL ERROR: %s", exc, exc_info=True)
         sys.exit(1)
 
 
