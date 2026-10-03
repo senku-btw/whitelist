@@ -70,7 +70,8 @@ def format_filename(category: str) -> str:
     safe_chars = "".join(c for c in category if c.isalnum() or c in (' ', '_', '-')).strip()
     return re.sub(r'\s+', '_', safe_chars)
 
-def run_command(cmd: List[str], cwd: Optional[Path] = None, capture_output: bool = False, timeout: int = 30) -> subprocess.CompletedProcess:
+def run_command(cmd: List[str], cwd: Optional[Path] = None, capture_output: bool = True, timeout: int = 30) -> subprocess.CompletedProcess:
+    """Executes a system command securely, suppressing direct terminal output via capture."""
     try:
         return subprocess.run(
             cmd,
@@ -257,7 +258,6 @@ def push_to_github(cfg: AppConfig) -> None:
     if not (cfg.repo_dir / ".git").is_dir():
         raise RuntimeError(f"Not a valid Git repository: {cfg.repo_dir}")
 
-    # Explicitly add only the required files to prevent sensitive data leaks
     run_command(
         ["git", "add", str(cfg.whitelist_txt_path.name), str(cfg.whitelists_dir.name)], 
         cwd=cfg.repo_dir, 
