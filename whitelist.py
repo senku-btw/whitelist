@@ -52,9 +52,7 @@ class AppConfig:
         if not db_path.is_file():
             raise FileNotFoundError(f"Pi-hole database missing: {db_path}")
         if not repo_dir.is_dir():
-            raise NotADirectoryError(
-                f"Repository directory missing: {repo_dir}"
-            )
+            raise NotADirectoryError(f"Repository directory missing: {repo_dir}")
 
         return cls(
             db_path=db_path,
@@ -82,9 +80,7 @@ class GroupAssignmentSpec:
 def sanitize_domain(domain: str) -> str:
     """Sanitize and normalize a domain string."""
     if not isinstance(domain, str):
-        raise TypeError(
-            f"Expected string for domain, got {type(domain).__name__}"
-        )
+        raise TypeError(f"Expected string for domain, got {type(domain).__name__}")
     return domain.strip().lower()
 
 
@@ -159,9 +155,7 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
 # --- Database Interactions ---
 
 
-def execute_read(
-    cfg: AppConfig, query: str, params: Tuple = ()
-) -> List[Tuple]:
+def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
     """Execute a read-only SQL query against the Pi-hole database."""
     try:
         db_uri = f"file:{cfg.db_path}?mode=ro"
@@ -171,6 +165,25 @@ def execute_read(
             return cursor.fetchall()
     except sqlite3.Error as exc:
         raise RuntimeError(f"Database read failure: {exc}") from exc
+
+
+def execute_deletions(
+    cfg: AppConfig,
+    delete_links_sql: str,
+    delete_domains_sql: str,
+    params: List[Tuple[str,]],
+    err_context: str,
+) -> None:
+    """Execute domain and link deletion queries within a transaction."""
+    try:
+        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
+            cursor = conn.cursor()
+            cursor.executemany(delete_links_sql, params)
+            cursor.executemany(delete_domains_sql, params)
+    except sqlite3.Error as exc:
+        raise RuntimeError(
+            f"Database deletion transaction for {err_context} failed: {exc}"
+        ) from exc
 
 
 # --- Business Logic ---
@@ -198,9 +211,7 @@ def process_step1(cfg: AppConfig) -> None:
     txt_entries: FrozenSet[str] = frozenset()
     if cfg.whitelist_txt_path.exists():
         try:
-            with open(
-                cfg.whitelist_txt_path, "r", encoding="utf-8"
-            ) as file_obj:
+            with open(cfg.whitelist_txt_path, "r", encoding="utf-8") as file_obj:
                 txt_entries = frozenset(
                     sanitize_domain(line) for line in file_obj if line.strip()
                 )
@@ -222,30 +233,18 @@ def process_step1(cfg: AppConfig) -> None:
         "AND type = 0 AND (comment IS NULL OR comment = '')"
     )
 
-    try:
-        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
-            cursor = conn.cursor()
-            cursor.executemany(delete_links, params)
-            cursor.executemany(delete_domains, params)
-    except sqlite3.Error as exc:
-        raise RuntimeError(
-            f"Database deletion transaction failed: {exc}"
-        ) from exc
+    execute_deletions(cfg, delete_links, delete_domains, params, "step 1")
 
     run_command(
         ["docker", "exec", "pihole", "pihole", "reloadlists"],
         timeout=cfg.subprocess_timeout,
     )
-    logger.info(
-        "Step 1 Complete: Extracted and merged %d entries.", len(db_entries)
-    )
+    logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
 
 
 def process_immutable_hosts(cfg: AppConfig) -> None:
     """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt."""
-    query = (
-        "SELECT domain FROM domainlist WHERE type = 0 AND comment = 'hosts'"
-    )
+    query = "SELECT domain FROM domainlist WHERE type = 0 AND comment = 'hosts'"
     db_entries_raw = execute_read(cfg, query)
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
@@ -259,9 +258,7 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
                     sanitize_domain(line) for line in file_obj if line.strip()
                 )
         except IOError as exc:
-            raise RuntimeError(
-                f"Failed to read existing hosts.txt: {exc}"
-            ) from exc
+            raise RuntimeError(f"Failed to read existing hosts.txt: {exc}") from exc
 
     if not db_entries:
         logger.info("No new 'hosts' entries to merge from DB.")
@@ -273,23 +270,13 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
     params = [(e,) for e in db_entries]
     delete_links = (
         "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
-        "(SELECT id FROM domainlist WHERE domain = ? "
-        "AND type = 0 AND comment = 'hosts')"
+        "(SELECT id FROM domainlist WHERE domain = ? AND type = 0 AND comment = 'hosts')"
     )
     delete_domains = (
-        "DELETE FROM domainlist WHERE domain = ? "
-        "AND type = 0 AND comment = 'hosts'"
+        "DELETE FROM domainlist WHERE domain = ? AND type = 0 AND comment = 'hosts'"
     )
 
-    try:
-        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
-            cursor = conn.cursor()
-            cursor.executemany(delete_links, params)
-            cursor.executemany(delete_domains, params)
-    except sqlite3.Error as exc:
-        raise RuntimeError(
-            f"Database deletion transaction for hosts failed: {exc}"
-        ) from exc
+    execute_deletions(cfg, delete_links, delete_domains, params, "hosts")
 
     logger.info(
         "Extracted, merged, and deleted %d 'hosts' entries from DB.",
@@ -308,9 +295,7 @@ def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
                 sanitize_domain(line) for line in file_obj if line.strip()
             )
             logger.info(
-                "Cataloged %d entries from immutable %s.",
-                len(domains),
-                filename,
+                "Cataloged %d entries from immutable %s.", len(domains), filename
             )
             return domains
     except IOError as exc:
@@ -318,9 +303,7 @@ def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
         return frozenset()
 
 
-def extract_categorized_whitelists(
-    cfg: AppConfig,
-) -> Dict[str, FrozenSet[str]]:
+def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
     """Parse DB and cluster domains into categories, ignoring immutables."""
     query = (
         "SELECT domain, comment FROM domainlist "
@@ -343,9 +326,7 @@ def extract_categorized_whitelists(
     }
 
     for immutable_cat in ["healthcheck", "hosts"]:
-        immutable_domains = load_immutable_whitelist(
-            cfg, f"{immutable_cat}.txt"
-        )
+        immutable_domains = load_immutable_whitelist(cfg, f"{immutable_cat}.txt")
         if immutable_domains:
             categories_result[immutable_cat] = immutable_domains
 
@@ -375,18 +356,12 @@ def write_category_files(
         write_atomic(file_path, sorted(list(domains)))
 
 
-def _assign_exclusive_group(
-    cursor: sqlite3.Cursor,
-    spec: GroupAssignmentSpec,
-) -> None:
+def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -> None:
     """Exclusively assign domains/adlists matching comments to a group."""
     if spec.group_id is None:
         return
     placeholders = " OR ".join(["comment = ?"] * len(spec.comments))
-    query = (
-        f"SELECT id FROM {spec.table} WHERE "
-        f"({placeholders}) AND {spec.type_cond}"
-    )
+    query = f"SELECT id FROM {spec.table} WHERE ({placeholders}) AND {spec.type_cond}"
     cursor.execute(query, spec.comments)
     ids = [row[0] for row in cursor.fetchall()]
     if ids:
@@ -395,8 +370,7 @@ def _assign_exclusive_group(
             [(item_id,) for item_id in ids],
         )
         cursor.executemany(
-            f"INSERT INTO {spec.link_table} ({spec.fk_col}, group_id) "
-            "VALUES (?, ?)",
+            f"INSERT INTO {spec.link_table} ({spec.fk_col}, group_id) VALUES (?, ?)",
             [(item_id, spec.group_id) for item_id in ids],
         )
 
