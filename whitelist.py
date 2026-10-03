@@ -308,6 +308,8 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             )
             client_backups = cursor.fetchall()
 
+            # Optional: backup existing adlist mappings if you manage other adlists,
+            # but standard teardown clears domainlist/clients to rebuild them.
             cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
             cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
             cursor.execute('DELETE FROM "group" WHERE id != 0')
@@ -327,7 +329,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             group_map = {name: gid for gid, name in cursor.fetchall()}
             hc_group_id = group_map.get("healthcheck")
 
-            # Standard group assignment for domains
+            # Standard group assignment for individual domains
             cursor.execute(
                 "SELECT id, comment FROM domainlist "
                 "WHERE comment IS NOT NULL AND comment != '' "
@@ -347,7 +349,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     domain_group_links,
                 )
 
-            # Exclusively assign healthcheck/healtcheck allowlists to the healthcheck group
+            # Exclusively assign healthcheck/healtcheck domain allowlists
             cursor.execute(
                 "SELECT id FROM domainlist "
                 "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
@@ -356,15 +358,34 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             hc_allowlists = [row[0] for row in cursor.fetchall()]
 
             if hc_allowlists and hc_group_id is not None:
-                # Remove from all other groups, including the default group 0
                 cursor.executemany(
                     "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
                     [(d_id,) for d_id in hc_allowlists]
                 )
-                # Assign exclusively to the healthcheck group
                 cursor.executemany(
                     "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
                     [(d_id, hc_group_id) for d_id in hc_allowlists]
+                )
+
+            # Exclusively assign healthcheck/healtcheck Adlist subscriptions
+            # type = 1 identifies the adlist as an allowlist
+            cursor.execute(
+                "SELECT id FROM adlist "
+                "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
+                "AND type = 1"
+            )
+            hc_adlists = [row[0] for row in cursor.fetchall()]
+
+            if hc_adlists and hc_group_id is not None:
+                # Clear from all other groups, including default group 0
+                cursor.executemany(
+                    "DELETE FROM adlist_by_group WHERE adlist_id = ?",
+                    [(a_id,) for a_id in hc_adlists]
+                )
+                # Assign exclusively to the healthcheck group
+                cursor.executemany(
+                    "INSERT INTO adlist_by_group (adlist_id, group_id) VALUES (?, ?)",
+                    [(a_id, hc_group_id) for a_id in hc_adlists]
                 )
 
             # Restore client associations
@@ -389,7 +410,6 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
         raise RuntimeError(
             f"Database transaction failed during group rebuild: {exc}"
         ) from exc
-
 
 
 def push_to_github(cfg: AppConfig) -> None:
