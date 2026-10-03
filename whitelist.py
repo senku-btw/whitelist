@@ -286,9 +286,7 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
         write_atomic(file_path, sorted(list(domains)))
 
 
-def rebuild_db_groups(
-    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
-) -> None:
+def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely preserving client associations,
 
     keeping regex healthcheck entries.
