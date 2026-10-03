@@ -14,7 +14,7 @@
 - [x] https://gist.github.com/alex-messer/7c8426a6d701ca494e54ded31da45707
 - [x] https://github.com/deathbybandaid/pihole-whitelists
 - [x] https://github.com/hl2guide/Filterlist-for-AdGuard-or-PiHole
-- [ ] https://gist.github.com/dieechtenilente/5f6e29a3d5384bff68d7c9cc3e08cc0d
+- [x] https://gist.github.com/dieechtenilente/5f6e29a3d5384bff68d7c9cc3e08cc0d
 - [x] https://github.com/bubusan80/whitelist_hosting_public
 - [ ] https://github.com/nbarari/domain-allowlist
 - [x] https://github.com/gioxx/ph-whitelist
