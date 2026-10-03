@@ -68,9 +68,7 @@ class AppConfig:
 def sanitize_domain(domain: str) -> str:
     """Sanitize and normalize a domain string."""
     if not isinstance(domain, str):
-        raise TypeError(
-            f"Expected string for domain, got {type(domain).__name__}"
-        )
+        raise TypeError(f"Expected string for domain, got {type(domain).__name__}")
     return domain.strip().lower()
 
 
@@ -145,15 +143,11 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
 # --- Database Interactions ---
 
 
-def execute_read(
-    cfg: AppConfig, query: str, params: Tuple = ()
-) -> List[Tuple]:
+def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
     """Execute a read-only SQL query against the Pi-hole database."""
     try:
         db_uri = f"file:{cfg.db_path}?mode=ro"
-        with sqlite3.connect(
-            db_uri, uri=True, timeout=cfg.db_timeout
-        ) as conn:
+        with sqlite3.connect(db_uri, uri=True, timeout=cfg.db_timeout) as conn:
             cursor = conn.cursor()
             cursor.execute(query, params)
             return cursor.fetchall()
@@ -186,18 +180,12 @@ def process_step1(cfg: AppConfig) -> None:
     txt_entries: FrozenSet[str] = frozenset()
     if cfg.whitelist_txt_path.exists():
         try:
-            with open(
-                cfg.whitelist_txt_path, "r", encoding="utf-8"
-            ) as file_obj:
+            with open(cfg.whitelist_txt_path, "r", encoding="utf-8") as file_obj:
                 txt_entries = frozenset(
-                    sanitize_domain(line)
-                    for line in file_obj
-                    if line.strip()
+                    sanitize_domain(line) for line in file_obj if line.strip()
                 )
         except IOError as exc:
-            raise RuntimeError(
-                f"Failed to read existing whitelist.txt: {exc}"
-            ) from exc
+            raise RuntimeError(f"Failed to read existing whitelist.txt: {exc}") from exc
 
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
@@ -218,17 +206,13 @@ def process_step1(cfg: AppConfig) -> None:
             cursor.executemany(delete_links, params)
             cursor.executemany(delete_domains, params)
     except sqlite3.Error as exc:
-        raise RuntimeError(
-            f"Database deletion transaction failed: {exc}"
-        ) from exc
+        raise RuntimeError(f"Database deletion transaction failed: {exc}") from exc
 
     run_command(
         ["docker", "exec", "pihole", "pihole", "reloadlists"],
         timeout=cfg.subprocess_timeout,
     )
-    logger.info(
-        "Step 1 Complete: Extracted and merged %d entries.", len(db_entries)
-    )
+    logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
 
 
 def extract_categorized_whitelists(
@@ -255,9 +239,7 @@ def extract_categorized_whitelists(
     }
 
 
-def write_category_files(
-    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
-) -> None:
+def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Write generated categories to physical category files."""
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
@@ -270,9 +252,7 @@ def write_category_files(
         write_atomic(file_path, sorted(list(domains)))
 
 
-def rebuild_db_groups(
-    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
-) -> None:
+def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely preserving client associations."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
@@ -281,16 +261,16 @@ def rebuild_db_groups(
 
             cursor.execute('SELECT id FROM "group" WHERE id = 0')
             if cursor.fetchone() is None:
-                raise RuntimeError(
-                    "Integrity Error: Default group (id=0) missing."
-                )
+                raise RuntimeError("Integrity Error: Default group (id=0) missing.")
 
-            cursor.execute("""
+            cursor.execute(
+                """
                 SELECT cbg.client_id, g.name 
                 FROM client_by_group cbg
                 JOIN "group" g ON cbg.group_id = g.id
                 WHERE g.id != 0
-            """)
+            """
+            )
             client_backups = cursor.fetchall()
 
             cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
