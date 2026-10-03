@@ -381,12 +381,13 @@ def push_to_github(cfg: AppConfig) -> None:
     )
 
     try:
-        subprocess.Popen(
+        with subprocess.Popen(
             ["git", "push"],
             cwd=cfg.repo_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-        )
+        ):
+            pass
         logger.info(
             "Step 4 Complete: Commit '%s' created and push dispatched.",
             commit_msg,
