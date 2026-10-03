@@ -25,7 +25,6 @@ deviceenrollment.apple.com
 deviceservices-external.apple.com
 diagassets.apple.com
 discussions.apple.com
-doh.dns.apple.com
 e673.dscx.akamaiedge.net
 fba.apple.com
 feedbackws.icloud.com
