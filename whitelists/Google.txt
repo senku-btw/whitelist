@@ -34,7 +34,6 @@ code.google.com
 connectivitycheck.android.com
 console.cloud.google.com
 contacts.google.com
-cse.google.com
 developers.google.com
 device-provisioning.googleapis.com
 dl.google.com
