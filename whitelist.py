@@ -223,7 +223,7 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
 
     hosts_path = cfg.whitelists_dir / "hosts.txt"
     txt_entries: FrozenSet[str] = frozenset()
-    
+
     if hosts_path.exists():
         try:
             with open(hosts_path, "r", encoding="utf-8") as file_obj:
@@ -237,7 +237,7 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
         logger.info("No new 'hosts' entries to merge from DB.")
         return
 
-    # Automatically deduplicates via set union, sorts alphabetically, and ensures entries are never deleted
+    # Automatically deduplicates via set union, sorts alphabetically, and keeps entries permanently
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(hosts_path, combined_entries)
 
@@ -257,7 +257,9 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
             cursor.executemany(delete_links, params)
             cursor.executemany(delete_domains, params)
     except sqlite3.Error as exc:
-        raise RuntimeError(f"Database deletion transaction for hosts failed: {exc}") from exc
+        raise RuntimeError(
+            f"Database deletion transaction for hosts failed: {exc}"
+        ) from exc
 
     logger.info("Extracted, merged, and deleted %d 'hosts' entries from DB.", len(db_entries))
 
@@ -327,11 +329,91 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
     for category, domains in categories.items():
         if category.lower() in ("healthcheck", "hosts"):
             # Immutable files: never delete entries, never overwrite, skip wiping entirely.
-            logger.info("Skipping write/overwrite for immutable file: %s.txt", category.lower())
+            logger.info(
+                "Skipping write/overwrite for immutable file: %s.txt",
+                category.lower(),
+            )
             continue
         safe_filename = format_filename(category)
         file_path = cfg.whitelists_dir / f"{safe_filename}.txt"
         write_atomic(file_path, sorted(list(domains)))
+
+
+def _assign_exclusive_group(
+    cursor: sqlite3.Cursor,
+    table: str,
+    link_table: str,
+    fk_col: str,
+    comments: Tuple[str, ...],
+    group_id: Optional[int],
+    type_cond: str,
+) -> None:
+    """Exclusively assign domains or adlists matching specified comments to a target group."""
+    if group_id is None:
+        return
+    placeholders = " OR ".join(["comment = ?"] * len(comments))
+    query = f"SELECT id FROM {table} WHERE ({placeholders}) AND {type_cond}"
+    cursor.execute(query, comments)
+    ids = [row[0] for row in cursor.fetchall()]
+    if ids:
+        cursor.executemany(
+            f"DELETE FROM {link_table} WHERE {fk_col} = ?",
+            [(item_id,) for item_id in ids],
+        )
+        cursor.executemany(
+            f"INSERT INTO {link_table} ({fk_col}, group_id) VALUES (?, ?)",
+            [(item_id, group_id) for item_id in ids],
+        )
+
+
+def _recreate_groups(
+    cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
+) -> Dict[str, int]:
+    """Rebuild non-default group definitions and return a mapping of group names to IDs."""
+    cursor.execute('SELECT id FROM "group" WHERE id = 0')
+    if cursor.fetchone() is None:
+        raise RuntimeError("Integrity Error: Default group (id=0) missing.")
+
+    cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
+    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
+    cursor.execute('DELETE FROM "group" WHERE id != 0')
+
+    sorted_categories = sorted(categories.keys())
+    if "healthcheck" not in sorted_categories:
+        sorted_categories.append("healthcheck")
+    if "hosts" not in sorted_categories:
+        sorted_categories.append("hosts")
+
+    cursor.executemany(
+        'INSERT INTO "group" (name, description) VALUES (?, ?)',
+        [(cat, cat) for cat in sorted_categories],
+    )
+
+    cursor.execute('SELECT id, name FROM "group" WHERE id != 0')
+    return {name: gid for gid, name in cursor.fetchall()}
+
+
+def _assign_standard_domains(
+    cursor: sqlite3.Cursor, group_map: Dict[str, int]
+) -> None:
+    """Link non-exclusive domainlist entries to their respective comment categories."""
+    cursor.execute(
+        "SELECT id, comment FROM domainlist "
+        "WHERE comment IS NOT NULL AND comment != '' "
+        "AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (2, 3))"
+    )
+    domain_group_links = []
+    for d_id, comment in cursor.fetchall():
+        for tag in parse_comment_categories(comment):
+            if tag in group_map:
+                domain_group_links.append((d_id, group_map[tag]))
+
+    if domain_group_links:
+        cursor.executemany(
+            "INSERT OR IGNORE INTO domainlist_by_group "
+            "(domainlist_id, group_id) VALUES (?, ?)",
+            domain_group_links,
+        )
 
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
@@ -343,10 +425,6 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
 
-            cursor.execute('SELECT id FROM "group" WHERE id = 0')
-            if cursor.fetchone() is None:
-                raise RuntimeError("Integrity Error: Default group (id=0) missing.")
-
             cursor.execute(
                 """
                 SELECT cbg.client_id, g.name
@@ -357,120 +435,29 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             )
             client_backups = cursor.fetchall()
 
-            cursor.execute("DELETE FROM client_by_group WHERE group_id != 0")
-            cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != 0")
-            cursor.execute('DELETE FROM "group" WHERE id != 0')
+            group_map = _recreate_groups(cursor, categories)
+            _assign_standard_domains(cursor, group_map)
 
-            sorted_categories = sorted(categories.keys())
-            
-            # Ensure our immutable groups always exist for strict assignment
-            if "healthcheck" not in sorted_categories:
-                sorted_categories.append("healthcheck")
-            if "hosts" not in sorted_categories:
-                sorted_categories.append("hosts")
+            hc_gid = group_map.get("healthcheck")
+            hosts_gid = group_map.get("hosts")
 
-            cursor.executemany(
-                'INSERT INTO "group" (name, description) VALUES (?, ?)',
-                [(cat, cat) for cat in sorted_categories],
+            _assign_exclusive_group(
+                cursor, "domainlist", "domainlist_by_group", "domainlist_id",
+                ("healthcheck", "healtcheck"), hc_gid, "type IN (0, 2)"
+            )
+            _assign_exclusive_group(
+                cursor, "domainlist", "domainlist_by_group", "domainlist_id",
+                ("hosts",), hosts_gid, "type IN (0, 2)"
+            )
+            _assign_exclusive_group(
+                cursor, "adlist", "adlist_by_group", "adlist_id",
+                ("healthcheck", "healtcheck"), hc_gid, "type = 1"
+            )
+            _assign_exclusive_group(
+                cursor, "adlist", "adlist_by_group", "adlist_id",
+                ("hosts",), hosts_gid, "type = 1"
             )
 
-            cursor.execute('SELECT id, name FROM "group" WHERE id != 0')
-            group_map = {name: gid for gid, name in cursor.fetchall()}
-            
-            hc_group_id = group_map.get("healthcheck")
-            hosts_group_id = group_map.get("hosts")
-
-            # Standard group assignment for individual domains
-            cursor.execute(
-                "SELECT id, comment FROM domainlist "
-                "WHERE comment IS NOT NULL AND comment != '' "
-                "AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (2, 3))"
-            )
-            domain_group_links = []
-
-            for d_id, comment in cursor.fetchall():
-                for tag in parse_comment_categories(comment):
-                    if tag in group_map:
-                        domain_group_links.append((d_id, group_map[tag]))
-
-            if domain_group_links:
-                cursor.executemany(
-                    "INSERT OR IGNORE INTO domainlist_by_group "
-                    "(domainlist_id, group_id) VALUES (?, ?)",
-                    domain_group_links,
-                )
-
-            # Exclusively assign healthcheck domain allowlists
-            cursor.execute(
-                "SELECT id FROM domainlist "
-                "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
-                "AND type IN (0, 2)"
-            )
-            hc_allowlists = [row[0] for row in cursor.fetchall()]
-
-            if hc_allowlists and hc_group_id is not None:
-                cursor.executemany(
-                    "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
-                    [(d_id,) for d_id in hc_allowlists]
-                )
-                cursor.executemany(
-                    "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
-                    [(d_id, hc_group_id) for d_id in hc_allowlists]
-                )
-
-            # Exclusively assign hosts domain allowlists
-            cursor.execute(
-                "SELECT id FROM domainlist "
-                "WHERE comment = 'hosts' AND type IN (0, 2)"
-            )
-            hosts_allowlists = [row[0] for row in cursor.fetchall()]
-
-            if hosts_allowlists and hosts_group_id is not None:
-                cursor.executemany(
-                    "DELETE FROM domainlist_by_group WHERE domainlist_id = ?",
-                    [(d_id,) for d_id in hosts_allowlists]
-                )
-                cursor.executemany(
-                    "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
-                    [(d_id, hosts_group_id) for d_id in hosts_allowlists]
-                )
-
-            # Exclusively assign healthcheck Adlist subscriptions
-            cursor.execute(
-                "SELECT id FROM adlist "
-                "WHERE (comment = 'healthcheck' OR comment = 'healtcheck') "
-                "AND type = 1"
-            )
-            hc_adlists = [row[0] for row in cursor.fetchall()]
-
-            if hc_adlists and hc_group_id is not None:
-                cursor.executemany(
-                    "DELETE FROM adlist_by_group WHERE adlist_id = ?",
-                    [(a_id,) for a_id in hc_adlists]
-                )
-                cursor.executemany(
-                    "INSERT INTO adlist_by_group (adlist_id, group_id) VALUES (?, ?)",
-                    [(a_id, hc_group_id) for a_id in hc_adlists]
-                )
-
-            # Exclusively assign hosts Adlist subscriptions
-            cursor.execute(
-                "SELECT id FROM adlist "
-                "WHERE comment = 'hosts' AND type = 1"
-            )
-            hosts_adlists = [row[0] for row in cursor.fetchall()]
-
-            if hosts_adlists and hosts_group_id is not None:
-                cursor.executemany(
-                    "DELETE FROM adlist_by_group WHERE adlist_id = ?",
-                    [(a_id,) for a_id in hosts_adlists]
-                )
-                cursor.executemany(
-                    "INSERT INTO adlist_by_group (adlist_id, group_id) VALUES (?, ?)",
-                    [(a_id, hosts_group_id) for a_id in hosts_adlists]
-                )
-
-            # Restore client associations
             client_group_links = [
                 (client_id, group_map[group_name])
                 for client_id, group_name in client_backups
