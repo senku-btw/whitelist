@@ -225,7 +225,10 @@ def load_healthcheck_whitelist(cfg: AppConfig) -> FrozenSet[str]:
             domains = frozenset(
                 sanitize_domain(line) for line in file_obj if line.strip()
             )
-            logger.info("Cataloged %d entries from immutable healthcheck.txt.", len(domains))
+            logger.info(
+                "Cataloged %d entries from immutable healthcheck.txt.",
+                len(domains),
+            )
             return domains
     except IOError as exc:
         logger.warning("Failed to read healthcheck.txt: %s", exc)
