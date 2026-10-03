@@ -32,7 +32,6 @@ clients6.google.com
 cloud.google.com
 code.google.com
 connectivitycheck.android.com
-connectivitycheck.gstatic.com
 console.cloud.google.com
 contacts.google.com
 cse.google.com
@@ -41,13 +40,11 @@ device-provisioning.googleapis.com
 dl.google.com
 docs.google.com
 drive.google.com
-encrypted-tbn2.gstatic.com
 firebaseinstallations.googleapis.com
 firebaselogging-pa.googleapis.com
 firebaseremoteconfig.googleapis.com
 firebasestorage.googleapis.com
 fonts.googleapis.com
-fonts.gstatic.com
 gmail.com
 gmail.google.com
 google.com
@@ -55,7 +52,6 @@ googleapis.l.google.com
 googlehosted.l.googleusercontent.com
 googleusercontent.com
 groups.google.com
-gstatic.com
 home.plus.google.com
 id.google.com
 images.google.com
@@ -72,7 +68,6 @@ mail.google.com
 mail.plus.google.com
 maps.google.com
 maps.googleapis.com
-maps.gstatic.com
 mtalk.google.com
 myaccount.google.com
 news.google.com
@@ -88,7 +83,6 @@ redirector.gvt2.com
 script.google.com
 securetoken.googleapis.com
 security.google.com
-ssl.gstatic.com
 storage.cloud.google.com
 storage.googleapis.com
 talk.google.com
