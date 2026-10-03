@@ -171,7 +171,7 @@ def execute_deletions(
     cfg: AppConfig,
     delete_links_sql: str,
     delete_domains_sql: str,
-    params: List[Tuple[str,]],
+    params: List[Tuple[str]],
     err_context: str,
 ) -> None:
     """Execute domain and link deletion queries within a transaction."""
@@ -216,9 +216,7 @@ def process_step1(cfg: AppConfig) -> None:
                     sanitize_domain(line) for line in file_obj if line.strip()
                 )
         except IOError as exc:
-            raise RuntimeError(
-                f"Failed to read existing whitelist.txt: {exc}"
-            ) from exc
+            raise RuntimeError(f"Failed to read existing whitelist.txt: {exc}") from exc
 
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
@@ -333,9 +331,7 @@ def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
     return categories_result
 
 
-def write_category_files(
-    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
-) -> None:
+def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Write generated categories to physical category files."""
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
@@ -402,9 +398,7 @@ def _recreate_groups(
     return {name: gid for gid, name in cursor.fetchall()}
 
 
-def _assign_standard_domains(
-    cursor: sqlite3.Cursor, group_map: Dict[str, int]
-) -> None:
+def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
     """Link non-exclusive domainlist entries to comment categories."""
     cursor.execute(
         "SELECT id, comment FROM domainlist "
@@ -425,9 +419,7 @@ def _assign_standard_domains(
         )
 
 
-def rebuild_db_groups(
-    cfg: AppConfig, categories: Dict[str, FrozenSet[str]]
-) -> None:
+def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely preserving client associations."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
