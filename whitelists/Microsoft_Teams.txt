@@ -1,4 +1,5 @@
 api.teams.skype.com
+config.teams.microsoft.com
 img.teams.skype.com
 teams.cdn.office.net
 teams.events.data.microsoft.com
