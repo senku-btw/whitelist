@@ -10,6 +10,16 @@ akamaitechnologies.com
 akamaized.net
 amazonaws.com
 amzn.com
+hwcdn.net
+jquery.com
+cdn.cloudflare.net
+cdnjs.cloudflare.com
+jsdelivr.net
+res.cloudinary.com
+aspnetcdn.com
+imgix.net
+placeholdit.imgix.net
+gravatar.com
 amzn.to
 anchor.fm
 api-global.netflix.com
