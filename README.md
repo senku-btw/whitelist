@@ -20,3 +20,4 @@
 - [x] https://github.com/gioxx/ph-whitelist
 - [x] https://github.com/mhhakim/pihole-blocklist
 - [x] https://github.com/zachlagden/Pi-hole-Optimized-Blocklists
+- [x] https://github.com/stevejenkins/pi-hole-lists/tree/main
