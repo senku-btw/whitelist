@@ -516,7 +516,6 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             group_map = _recreate_groups(cursor, categories)
             _assign_standard_domains(cursor, group_map)
-            
             _assign_regex_allow_groups(cursor, group_map)
 
             hc_gid = group_map.get("healthcheck")
