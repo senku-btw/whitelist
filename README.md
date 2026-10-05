@@ -19,3 +19,4 @@
 - [x] https://github.com/nbarari/domain-allowlist
 - [x] https://github.com/gioxx/ph-whitelist
 - [x] https://github.com/mhhakim/pihole-blocklist
+- [x] https://github.com/zachlagden/Pi-hole-Optimized-Blocklists
