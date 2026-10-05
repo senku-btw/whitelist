@@ -7,6 +7,7 @@ img.youtube.com
 m.youtube.com
 manifest.googlevideo.com
 oauthaccountmanager.googleapis.com
+redirector.googlevideo.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
@@ -14,6 +15,7 @@ securetoken.googleapis.com
 sponsor.ajay.app
 tv.youtube.com
 video-stats.l.google.com
+www.googleapis.com
 www.youtube-nocookie.com
 www.youtube.com
 yimg.com
@@ -24,5 +26,6 @@ youtube-ui.l.google.com
 youtube.com
 youtube.googleapis.com
 youtube.l.google.com
+youtubei.googleapis.com
 yt3.ggpht.com
 ytimg.l.google.com

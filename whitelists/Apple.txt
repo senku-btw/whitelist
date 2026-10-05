@@ -59,6 +59,7 @@ oscdn.apple.com
 osrecovery.apple.com
 phobos.apple.com
 ppq.apple.com
+s.mzstatic.com
 secure-appldnld.apple.com
 serverstatus.apple.com
 setup.icloud.com

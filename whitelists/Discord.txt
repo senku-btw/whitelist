@@ -5,6 +5,7 @@ discord.media
 discordapp.com
 discordapp.net
 discordstatus.com
+gateway.discord.gg
 images-1.discordapp.net
 images-2.discordapp.net
 images-ext-1.discordapp.net

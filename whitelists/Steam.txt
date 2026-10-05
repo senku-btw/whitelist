@@ -1,3 +1,4 @@
+api.steampowered.com
 steamcdn-a.akamaihd.net
 steamcommunity-a.akamaihd.net
 steamcommunity.com

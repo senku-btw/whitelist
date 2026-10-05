@@ -5,7 +5,9 @@ gateway.reddit.com
 gql.reddit.com
 i.redd.it
 i.reddit.com
+new.reddit.com
 oauth.reddit.com
+old.reddit.com
 preview.redd.it
 redd.it
 reddit-uploaded-media.s3-accelerate.amazonaws.com
@@ -14,5 +16,8 @@ reddit.map.fastly.net
 s.reddit.com
 ssl.reddit.com
 strapi.reddit.com
+styles.redditmedia.com
 v.redd.it
 www.reddit.com
+www.redditmedia.com
+www.redditstatic.com

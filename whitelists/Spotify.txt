@@ -2,6 +2,7 @@ accounts.spotify.com
 api-partner.spotify.com
 api-tv.spotify.com
 api.spotify.com
+apresolve.spotify.com
 audio-ak.spotify.com.edgesuite.net
 audio-ake.spotify.com.edgesuite.net
 audio-akp.spotify.com.edgesuite.net

@@ -6,6 +6,7 @@ amazonaws.com
 amzn.to
 api.eu-west-1.aiv-delivery.net
 awstrack.me
+cloudsync-prod.s3.amazonaws.com
 eu.api.amazonvideo.com
 fls-eu.amazon.com
 fls-na.amazon.com

@@ -16,6 +16,7 @@ facebook.net
 fbcdn.com
 fbcdn.net
 fbsbx.com
+l.messenger.com
 messenger.com
 mqtt-mini.facebook.com
 mqtt.c10r.facebook.com
@@ -27,5 +28,6 @@ static.xx.fbcdn.net
 web-fallback.facebook.com
 web.facebook.com
 www.facebook.com
+www.messenger.com
 z-m-gateway.facebook.com
 z-m.c10r.facebook.com

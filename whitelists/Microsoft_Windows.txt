@@ -3,6 +3,10 @@
 account.live.com
 acctcdn.msauth.net
 acctcdn.msftauth.net
+api.msn.com
+assets.msn.com
+assets1.xboxlive.com
+assets2.xboxlive.com
 au.download.windowsupdate.com
 au.v4.download.windowsupdate.com
 auth.microsoft.com
@@ -14,6 +18,8 @@ ctldl.windowsupdate.com
 dc.services.visualstudio.com
 displaycatalog.mp.microsoft.com
 dl.delivery.mp.microsoft.com
+dlassets.xboxlive.com
+dlassets2.xboxlive.com
 dns.msftncsi.com
 download.windowsupdate.com
 ds.download.windowsupdate.com
@@ -25,14 +31,19 @@ ipv6.msftncsi.com
 login.live.com
 login.microsoftonline.com
 mem.gfx.ms
+mobile.events.data.microsoft.com
 msedge.api.cdp.microsoft.com
 msftncsi.com
+ntp.msn.com
 officeclient.microsoft.com
 outlook.office365.com
 products.office.com
+ris.api.iris.microsoft.com
+settings.data.microsoft.com
 sls.update.microsoft.com.akadns.net
 smartscreen-prod.microsoft.com
 smartscreen.microsoft.com
+srtb.msn.com
 store-images.microsoft.com
 store-images.s-microsoft.com
 storecatalogrevocation.storequality.microsoft.com
@@ -45,3 +56,4 @@ wdcpalt.microsoft.com
 wns.windows.com
 www.msftconnecttest.com
 www.msftncsi.com
+www.msn.com
