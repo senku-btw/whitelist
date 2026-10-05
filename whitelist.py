@@ -468,6 +468,41 @@ def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) 
             domain_group_links,
         )
 
+def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
+    """
+    Enforce exclusive group assignment for regex allow list (type 2).
+    If comment matches a group, assign exclusively to that group (remove from default).
+    If no match, no comment, or unassigned, strictly assign to the Default group.
+    """
+    # Fetch all regex domains (type 2)
+    cursor.execute("SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,))
+    regex_entries = cursor.fetchall()
+
+    for d_id, comment in regex_entries:
+        matched_gids = set()
+        if comment:
+            # Reuse existing category parser to find matches
+            tags = parse_comment_categories(comment)
+            for tag in tags:
+                if tag in group_map:
+                    matched_gids.add(group_map[tag])
+
+        # Clear ALL current group assignments for this domain (including Default)
+        cursor.execute("DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,))
+
+        if matched_gids:
+            # Assign exclusively to matched groups
+            cursor.executemany(
+                "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
+                [(d_id, gid) for gid in matched_gids]
+            )
+        else:
+            # Fallback to the default group if no valid comment match is found
+            cursor.execute(
+                "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
+                (d_id, DEFAULT_GROUP_ID)
+            )
+
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely preserving client associations."""
@@ -481,6 +516,8 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             group_map = _recreate_groups(cursor, categories)
             _assign_standard_domains(cursor, group_map)
+            
+            _assign_regex_allow_groups(cursor, group_map)
 
             hc_gid = group_map.get("healthcheck")
             hosts_gid = group_map.get("hosts")
