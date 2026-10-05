@@ -32,7 +32,7 @@ SQL_GET_DEFAULT_ENTRIES = """
 """
 
 SQL_DELETE_LINKS = """
-    DELETE FROM {table} WHERE {fk_col} IN 
+    DELETE FROM {table} WHERE {fk_col} IN
     (SELECT id FROM {base_table} WHERE domain = ? AND type = ? {extra_cond})
 """
 
@@ -41,14 +41,14 @@ SQL_DELETE_DOMAINS = """
 """
 
 SQL_GET_CATEGORIZED_DOMAINS = """
-    SELECT domain, comment FROM domainlist 
-    WHERE type = ? AND comment IS NOT NULL AND comment != '' 
+    SELECT domain, comment FROM domainlist
+    WHERE type = ? AND comment IS NOT NULL AND comment != ''
     AND comment NOT IN ('healthcheck', 'hosts')
 """
 
 SQL_GET_STANDARD_DOMAINS = """
-    SELECT id, comment FROM domainlist 
-    WHERE comment IS NOT NULL AND comment != '' 
+    SELECT id, comment FROM domainlist
+    WHERE comment IS NOT NULL AND comment != ''
     AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (?, ?))
 """
 
@@ -219,7 +219,7 @@ def execute_deletions(
     cfg: AppConfig,
     delete_links_sql: str,
     delete_domains_sql: str,
-    params: List[Tuple[str, ...]],
+    params: List[Tuple[str, int]],
     err_context: str,
 ) -> None:
     """Execute domain and link deletion queries within a transaction."""
@@ -265,11 +265,10 @@ def process_step1(cfg: AppConfig) -> None:
         table="domainlist_by_group",
         fk_col="domainlist_id",
         base_table="domainlist",
-        extra_cond=""
+        extra_cond="",
     )
     delete_domains = SQL_DELETE_DOMAINS.format(
-        base_table="domainlist",
-        extra_cond="AND (comment IS NULL OR comment = '')"
+        base_table="domainlist", extra_cond="AND (comment IS NULL OR comment = '')"
     )
 
     execute_deletions(cfg, delete_links, delete_domains, params, "step 1")
@@ -312,11 +311,10 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
         table="domainlist_by_group",
         fk_col="domainlist_id",
         base_table="domainlist",
-        extra_cond="AND comment = 'hosts'"
+        extra_cond="AND comment = 'hosts'",
     )
     delete_domains = SQL_DELETE_DOMAINS.format(
-        base_table="domainlist",
-        extra_cond="AND comment = 'hosts'"
+        base_table="domainlist", extra_cond="AND comment = 'hosts'"
     )
 
     execute_deletions(cfg, delete_links, delete_domains, params, "hosts")
@@ -417,10 +415,16 @@ def _recreate_groups(
     """Rebuild non-default group definitions and return group map."""
     cursor.execute('SELECT id FROM "group" WHERE id = ?', (DEFAULT_GROUP_ID,))
     if cursor.fetchone() is None:
-        raise RuntimeError(f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing.")
+        raise RuntimeError(
+            f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing."
+        )
 
-    cursor.execute("DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
-    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
+    cursor.execute(
+        "DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,)
+    )
+    cursor.execute(
+        "DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,)
+    )
     cursor.execute('DELETE FROM "group" WHERE id != ?', (DEFAULT_GROUP_ID,))
 
     sorted_categories = sorted(categories.keys())
@@ -468,14 +472,19 @@ def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) 
             domain_group_links,
         )
 
-def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
+
+def _assign_regex_allow_groups(
+    cursor: sqlite3.Cursor, group_map: Dict[str, int]
+) -> None:
     """
     Enforce exclusive group assignment for regex allow list (type 2).
     If comment matches a group, assign exclusively to that group (remove from default).
     If no match, no comment, or unassigned, strictly assign to the Default group.
     """
     # Fetch all regex domains (type 2)
-    cursor.execute("SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,))
+    cursor.execute(
+        "SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,)
+    )
     regex_entries = cursor.fetchall()
 
     for d_id, comment in regex_entries:
@@ -488,19 +497,21 @@ def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]
                     matched_gids.add(group_map[tag])
 
         # Clear ALL current group assignments for this domain (including Default)
-        cursor.execute("DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,))
+        cursor.execute(
+            "DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,)
+        )
 
         if matched_gids:
             # Assign exclusively to matched groups
             cursor.executemany(
                 "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
-                [(d_id, gid) for gid in matched_gids]
+                [(d_id, gid) for gid in matched_gids],
             )
         else:
             # Fallback to the default group if no valid comment match is found
             cursor.execute(
                 "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
-                (d_id, DEFAULT_GROUP_ID)
+                (d_id, DEFAULT_GROUP_ID),
             )
 
 
