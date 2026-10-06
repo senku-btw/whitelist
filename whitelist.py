@@ -43,12 +43,13 @@ SQL_DELETE_DOMAINS = """
 SQL_GET_CATEGORIZED_DOMAINS = """
     SELECT domain, comment FROM domainlist
     WHERE type = ? AND comment IS NOT NULL AND comment != ''
-    AND comment NOT IN ('healthcheck', 'hosts')
+    AND comment NOT IN ('healthcheck', 'hosts', 'Added from Query Log')
 """
 
 SQL_GET_STANDARD_DOMAINS = """
     SELECT id, comment FROM domainlist
     WHERE comment IS NOT NULL AND comment != ''
+    AND comment != 'Added from Query Log'
     AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (?, ?))
 """
 
@@ -86,7 +87,7 @@ class AppConfig:
 
     @classmethod
     def load(cls) -> "AppConfig":
-        """Load configuration from environment variables and check paths."""
+        """Load configuration from environment variables and check paths."""[cite: 1]
         default_db_path = os.getenv(
             "PIHOLE_DB_PATH",
             (
@@ -126,14 +127,14 @@ class GroupAssignmentSpec:
 
 
 def sanitize_domain(domain: str) -> str:
-    """Sanitize and normalize a domain string."""
+    """Sanitize and normalize a domain string."""[cite: 1]
     if not isinstance(domain, str):
         raise TypeError(f"Expected string for domain, got {type(domain).__name__}")
     return domain.strip().lower()
 
 
 def parse_comment_categories(comment: Optional[str]) -> List[str]:
-    """Parse categories out of a domain comment string, splitting by slashes."""
+    """Parse categories out of a domain comment string, splitting by slashes."""[cite: 1]
     if not comment or not isinstance(comment, str):
         return []
     cleaned_comment = re.sub(r"\{.*?\}", "", comment)
@@ -141,7 +142,7 @@ def parse_comment_categories(comment: Optional[str]) -> List[str]:
 
 
 def format_filename(category: str) -> str:
-    """Format category name into a safe filename."""
+    """Format category name into a safe filename."""[cite: 1]
     if not category:
         raise ValueError("Category name cannot be empty")
     safe_chars = "".join(
@@ -156,7 +157,7 @@ def run_command(
     capture_output: bool = True,
     timeout: int = 30,
 ) -> subprocess.CompletedProcess:
-    """Execute a system command securely with timeouts."""
+    """Execute a system command securely with timeouts."""[cite: 1]
     try:
         return subprocess.run(
             cmd,
@@ -176,7 +177,7 @@ def run_command(
 
 
 def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
-    """Write data to a temp file and replace target atomically."""
+    """Write data to a temp file and replace target atomically."""[cite: 1]
     filepath.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = None
     try:
@@ -204,7 +205,7 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
 
 
 def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
-    """Execute a read-only SQL query against the Pi-hole database."""
+    """Execute a read-only SQL query against the Pi-hole database."""[cite: 1]
     try:
         db_uri = f"file:{cfg.db_path}?mode=ro"
         with sqlite3.connect(db_uri, uri=True, timeout=cfg.db_timeout) as conn:
@@ -222,7 +223,7 @@ def execute_deletions(
     params: List[Tuple[str, int]],
     err_context: str,
 ) -> None:
-    """Execute domain and link deletion queries within a transaction."""
+    """Execute domain and link deletion queries within a transaction."""[cite: 1]
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             cursor = conn.cursor()
@@ -238,7 +239,7 @@ def execute_deletions(
 
 
 def process_step1(cfg: AppConfig) -> None:
-    """Merge default DB entries into whitelist.txt and remove them from DB."""
+    """Merge default DB entries into whitelist.txt and remove them from DB."""[cite: 1]
     db_entries_raw = execute_read(cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
@@ -281,7 +282,7 @@ def process_step1(cfg: AppConfig) -> None:
 
 
 def process_immutable_hosts(cfg: AppConfig) -> None:
-    """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt."""
+    """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt."""[cite: 1]
     query = "SELECT domain FROM domainlist WHERE type = ? AND comment = 'hosts'"
     db_entries_raw = execute_read(cfg, query, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
@@ -326,7 +327,7 @@ def process_immutable_hosts(cfg: AppConfig) -> None:
 
 
 def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
-    """Read an immutable whitelist file if present."""
+    """Read an immutable whitelist file if present."""[cite: 1]
     file_path = cfg.whitelists_dir / filename
     if not file_path.is_file():
         return frozenset()
@@ -345,7 +346,7 @@ def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
 
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
-    """Parse DB and cluster domains into categories, ignoring immutables."""
+    """Parse DB and cluster domains into categories, ignoring immutables."""[cite: 1]
     rows = execute_read(cfg, SQL_GET_CATEGORIZED_DOMAINS, (DOMAIN_TYPE_EXACT,))
 
     temp_dict: Dict[str, Set[str]] = {}
@@ -370,7 +371,7 @@ def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
 
 
 def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Write generated categories to physical category files."""
+    """Write generated categories to physical category files."""[cite: 1]
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
@@ -391,7 +392,7 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
 
 def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -> None:
-    """Exclusively assign domains/adlists matching comments to a group."""
+    """Exclusively assign domains/adlists matching comments to a group."""[cite: 1]
     if spec.group_id is None:
         return
     placeholders = " OR ".join(["comment = ?"] * len(spec.comments))
@@ -412,7 +413,7 @@ def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -
 def _recreate_groups(
     cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
 ) -> Dict[str, int]:
-    """Rebuild non-default group definitions and return group map."""
+    """Rebuild non-default group definitions and return group map."""[cite: 1]
     cursor.execute('SELECT id FROM "group" WHERE id = ?', (DEFAULT_GROUP_ID,))
     if cursor.fetchone() is None:
         raise RuntimeError(
@@ -442,7 +443,7 @@ def _recreate_groups(
 
 
 def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
-    """Link non-exclusive domainlist entries exclusively to comment categories."""
+    """Link non-exclusive domainlist entries exclusively to comment categories."""[cite: 1]
     cursor.execute(SQL_GET_STANDARD_DOMAINS, (DOMAIN_TYPE_REGEX, DOMAIN_TYPE_WILDCARD))
 
     domain_ids_to_clear: Set[int] = set()
@@ -480,7 +481,7 @@ def _assign_regex_allow_groups(
     Enforce exclusive group assignment for regex allow list (type 2).
     If a comment specifies multiple groups (e.g. Default/hosts), assign them to all matches.
     If no match, no comment, or unassigned, strictly assign to the Default group.
-    """
+    """[cite: 1]
     cursor.execute(
         "SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,)
     )
@@ -511,7 +512,7 @@ def _assign_regex_allow_groups(
 
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Rebuild Pi-hole DB groups safely preserving client associations."""
+    """Rebuild Pi-hole DB groups safely preserving client associations."""[cite: 1]
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
@@ -594,7 +595,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
 
 def export_regex_allowlist(cfg: AppConfig) -> None:
-    """Export regex allow entries to regex/allowlist.txt using comment groups."""
+    """Export regex allow entries to regex/allowlist.txt using comment groups."""[cite: 1]
     query = "SELECT domain, comment FROM domainlist WHERE type = ?"
     rows = execute_read(cfg, query, (DOMAIN_TYPE_REGEX,))
 
@@ -632,7 +633,7 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
 
 
 def push_to_github(cfg: AppConfig) -> None:
-    """Commit changes and push infrastructure changes to origin."""
+    """Commit changes and push infrastructure changes to origin."""[cite: 1]
     if not (cfg.repo_dir / ".git").is_dir():
         raise RuntimeError(f"Not a valid Git repository: {cfg.repo_dir}")
 
@@ -689,7 +690,7 @@ def push_to_github(cfg: AppConfig) -> None:
 
 
 def main() -> None:
-    """Run the primary Pi-hole whitelist automation routine."""
+    """Run the primary Pi-hole whitelist automation routine."""[cite: 1]
     logger.info("Initializing Pi-hole Whitelist Automation...")
     try:
         cfg = AppConfig.load()
