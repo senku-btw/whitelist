@@ -3,6 +3,9 @@ config.teams.microsoft.com
 img.teams.skype.com
 teams.cdn.office.net
 teams.events.data.microsoft.com
+teams.live.com
 teams.microsoft.us
 teams.skype.com
 teams.trafficmanager.net
+teamsforlife.afdcafe.tm.svc.cloud.microsoft
+tflteams.public.onecdn.static.microsoft
