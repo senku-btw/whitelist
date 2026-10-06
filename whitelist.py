@@ -133,7 +133,7 @@ def sanitize_domain(domain: str) -> str:
 
 
 def parse_comment_categories(comment: Optional[str]) -> List[str]:
-    """Parse categories out of a domain comment string."""
+    """Parse categories out of a domain comment string, splitting by slashes."""
     if not comment or not isinstance(comment, str):
         return []
     cleaned_comment = re.sub(r"\{.*?\}", "", comment)
@@ -478,7 +478,7 @@ def _assign_regex_allow_groups(
 ) -> None:
     """
     Enforce exclusive group assignment for regex allow list (type 2).
-    If comment matches a group, assign exclusively to that group (remove from default).
+    If a comment specifies multiple groups (e.g. Default/hosts), assign them to all matches.
     If no match, no comment, or unassigned, strictly assign to the Default group.
     """
     # Fetch all regex domains (type 2)
@@ -490,7 +490,7 @@ def _assign_regex_allow_groups(
     for d_id, comment in regex_entries:
         matched_gids = set()
         if comment:
-            # Reuse existing category parser to find matches
+            # Parses multiple categories split by '/'
             tags = parse_comment_categories(comment)
             for tag in tags:
                 if tag in group_map:
@@ -502,7 +502,7 @@ def _assign_regex_allow_groups(
         )
 
         if matched_gids:
-            # Assign exclusively to matched groups
+            # Assign explicitly to all matched groups
             cursor.executemany(
                 "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
                 [(d_id, gid) for gid in matched_gids],
@@ -526,6 +526,11 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             client_backups = cursor.fetchall()
 
             group_map = _recreate_groups(cursor, categories)
+            
+            # Explicitly append the Default group to the mapping lookup 
+            # so multi-assignments (e.g., 'Default/hosts') can resolve it natively.
+            group_map["Default"] = DEFAULT_GROUP_ID
+
             _assign_standard_domains(cursor, group_map)
             _assign_regex_allow_groups(cursor, group_map)
 
