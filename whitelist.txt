@@ -2,6 +2,8 @@
 0.wikipedia.com
 activate.adobe.com
 addons.cdn.mozilla.net
+dovetail.prxu.org
+getadhell.com
 addons.mozilla.org
 adf.ly
 gfwsl.geforce.com
