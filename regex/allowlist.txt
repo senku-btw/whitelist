@@ -1,0 +1,16 @@
+^traffic\.(|va[0-9]\.)megaphone\.(fm|cloud)$ -- Default
+
+(^|\.)githubusercontent\.com$ -- Default/hosts
+
+^external-[a-z]{3}[0-9]+-[0-9]+\.[a-z]{2}\.fbcdn\.net$ -- Facebook
+
+^scontent(-[a-z]{3}[0-9]+-[0-9]+)?\.[a-z]{2}\.fbcdn\.net$ -- Facebook
+
+^video(-[a-z]{3}[0-9]+-[0-9]+)?\.[a-z]{2}\.fbcdn\.net$ -- Facebook
+
+^(alt[0-9]-)?mtalk\.google\.com$ -- Google
+
+^scontent(-[a-z]{3}[0-9]+-[0-9]+)?\.cdninstagram\.com$ -- Instagram
+
+^[a-z]\.thumbs\.redditmedia\.com$ -- Reddit
+
