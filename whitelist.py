@@ -593,17 +593,55 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
         ) from exc
 
 
+def export_regex_allowlist(cfg: AppConfig) -> None:
+    """Export regex allow entries to regex/allowlist.txt using comment groups."""
+    query = "SELECT domain, comment FROM domainlist WHERE type = ?"
+    rows = execute_read(cfg, query, (DOMAIN_TYPE_REGEX,))
+
+    # Dictionary mapping comments to a set of sanitized regex patterns
+    regex_dict: Dict[str, Set[str]] = {}
+    
+    for domain, comment in rows:
+        # Sanitize pattern to avoid whitespace or invisible characters
+        sanitized_pattern = "".join(char for char in domain if char.isprintable() and not char.isspace())
+        
+        # Determine the fallback group name if no comment exists
+        safe_comment = comment.strip() if comment and comment.strip() else "Default"
+        
+        if safe_comment not in regex_dict:
+            regex_dict[safe_comment] = set()
+        regex_dict[safe_comment].add(sanitized_pattern)
+
+    # Format the file output: 'pattern -- comment' with an empty line between entries
+    output_lines = []
+    for comment_group, patterns in sorted(regex_dict.items()):
+        for pattern in sorted(patterns):
+            output_lines.append(f"{pattern} -- {comment_group}")
+            output_lines.append("")
+
+    # Create the 'regex' directory if it doesn't exist
+    regex_dir = cfg.repo_dir / "regex"
+    regex_dir.mkdir(parents=True, exist_ok=True)
+
+    # Write output sequence to allowlist.txt, overwriting if present
+    allowlist_path = regex_dir / "allowlist.txt"
+    write_atomic(allowlist_path, output_lines)
+    logger.info("Exported regex allowlist to %s", allowlist_path)
+
+
 def push_to_github(cfg: AppConfig) -> None:
     """Commit changes and push infrastructure changes to origin."""
     if not (cfg.repo_dir / ".git").is_dir():
         raise RuntimeError(f"Not a valid Git repository: {cfg.repo_dir}")
 
+    # Track the newly created regex directory
     run_command(
         [
             "git",
             "add",
             str(cfg.whitelist_txt_path.name),
             str(cfg.whitelists_dir.name),
+            "regex",
         ],
         cwd=cfg.repo_dir,
         timeout=cfg.subprocess_timeout,
@@ -660,6 +698,7 @@ def main() -> None:
         categories = extract_categorized_whitelists(cfg)
         if not categories:
             logger.info("No categorizable whitelists found. Skipping rebuild.")
+            export_regex_allowlist(cfg)
             push_to_github(cfg)
             return
 
@@ -671,6 +710,7 @@ def main() -> None:
             timeout=cfg.subprocess_timeout,
         )
 
+        export_regex_allowlist(cfg)
         push_to_github(cfg)
         logger.info("Automation sequence completed successfully.")
 
