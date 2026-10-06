@@ -133,7 +133,7 @@ def sanitize_domain(domain: str) -> str:
 
 
 def parse_comment_categories(comment: Optional[str]) -> List[str]:
-    """Parse categories out of a domain comment string."""
+    """Parse categories out of a domain comment string, splitting by slashes."""
     if not comment or not isinstance(comment, str):
         return []
     cleaned_comment = re.sub(r"\{.*?\}", "", comment)
@@ -478,10 +478,9 @@ def _assign_regex_allow_groups(
 ) -> None:
     """
     Enforce exclusive group assignment for regex allow list (type 2).
-    If comment matches a group, assign exclusively to that group (remove from default).
+    If a comment specifies multiple groups (e.g. Default/hosts), assign them to all matches.
     If no match, no comment, or unassigned, strictly assign to the Default group.
     """
-    # Fetch all regex domains (type 2)
     cursor.execute(
         "SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,)
     )
@@ -490,25 +489,21 @@ def _assign_regex_allow_groups(
     for d_id, comment in regex_entries:
         matched_gids = set()
         if comment:
-            # Reuse existing category parser to find matches
             tags = parse_comment_categories(comment)
             for tag in tags:
                 if tag in group_map:
                     matched_gids.add(group_map[tag])
 
-        # Clear ALL current group assignments for this domain (including Default)
         cursor.execute(
             "DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,)
         )
 
         if matched_gids:
-            # Assign exclusively to matched groups
             cursor.executemany(
                 "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
                 [(d_id, gid) for gid in matched_gids],
             )
         else:
-            # Fallback to the default group if no valid comment match is found
             cursor.execute(
                 "INSERT INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
                 (d_id, DEFAULT_GROUP_ID),
@@ -526,6 +521,11 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             client_backups = cursor.fetchall()
 
             group_map = _recreate_groups(cursor, categories)
+
+            # Explicitly append the Default group to the mapping lookup
+            # so multi-assignments (e.g., 'Default/hosts') can resolve it natively.
+            group_map["Default"] = DEFAULT_GROUP_ID
+
             _assign_standard_domains(cursor, group_map)
             _assign_regex_allow_groups(cursor, group_map)
 
@@ -600,14 +600,16 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
 
     # Dictionary mapping comments to a set of sanitized regex patterns
     regex_dict: Dict[str, Set[str]] = {}
-    
+
     for domain, comment in rows:
         # Sanitize pattern to avoid whitespace or invisible characters
-        sanitized_pattern = "".join(char for char in domain if char.isprintable() and not char.isspace())
-        
+        sanitized_pattern = "".join(
+            char for char in domain if char.isprintable() and not char.isspace()
+        )
+
         # Determine the fallback group name if no comment exists
         safe_comment = comment.strip() if comment and comment.strip() else "Default"
-        
+
         if safe_comment not in regex_dict:
             regex_dict[safe_comment] = set()
         regex_dict[safe_comment].add(sanitized_pattern)
