@@ -9,7 +9,7 @@ gravatar.com
 thetvdb.com
 themoviedb.com
 adguard.com
-dovetail-router.u.prx.tech)
+dovetail-router.u.prx.tech
 dovetail.prxu.org
 dl.dropbox.com
 dl.dropboxusercontent.com
@@ -143,8 +143,6 @@ ctldl.windowsupdate.com
 cz.wikipedia.com
 d.dropbox.com
 feeds.megaphone.fm
-d2c8v52ll5s99u.cloudfront.net
-d2gatte9o95jao.cloudfront.net
 dash.cloudflare.com
 dashboard.snapcraft.io
 db.tt
