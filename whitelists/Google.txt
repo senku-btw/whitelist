@@ -111,6 +111,7 @@ update.googleapis.com
 video.google.com
 webcache.googleusercontent.com
 www.google.com
+www.gstatic.com
 xmpp-server.l.google.com
 youtube.l.google.com
 ytimg.l.google.com
