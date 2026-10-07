@@ -545,6 +545,13 @@ gfwsl.geforce.com
 ghcr.io
 giphy.com
 gist.github.com
+ext-twitch.tv
+jtvnw.net
+live-video.net
+ttvnw.net
+twitch.tv
+twitchcdn.net
+twitchsvc.net
 gist.githubusercontent.com
 github-cloud.s3.amazonaws.com
 github-production-user-asset-6210df.s3.amazonaws.com
