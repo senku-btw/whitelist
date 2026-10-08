@@ -3,6 +3,9 @@ googlevideo.com
 history.google.com
 i.ytimg.com
 i1.ytimg.com
+i3.ytimg.com
+i4.ytimg.com
+i9.ytimg.com
 img.youtube.com
 m.youtube.com
 manifest.googlevideo.com
@@ -28,4 +31,5 @@ youtube.googleapis.com
 youtube.l.google.com
 youtubei.googleapis.com
 yt3.ggpht.com
+ytimg.com
 ytimg.l.google.com

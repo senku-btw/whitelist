@@ -14,6 +14,8 @@ ax.phobos.apple.com.edgesuite.net
 bpapi.apple.com
 c.apple.com
 captive.apple.com
+chatbox-web.apple.com
+chatbox-web.apple.com.akadns.net
 configuration.apple.com
 configuration.apple.com.akadns.net
 crl.apple.com
@@ -32,6 +34,8 @@ gg.apple.com
 gnf-mdn.apple.com
 gnf-mr.apple.com
 gs.apple.com
+gsa.apple.com
+gsa.apple.com.akadns.net
 gsp-ssl.ls-apple.com.akadns.net
 gsp-ssl.ls.apple.com
 gsp1.apple.com

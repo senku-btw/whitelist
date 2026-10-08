@@ -14,6 +14,7 @@ browser.pipe.aria.microsoft.com
 c.msn.com
 c.s-microsoft.com
 ccs.login.microsoftonline.com
+client.wns.windows.com
 ctldl.windowsupdate.com
 dc.services.visualstudio.com
 displaycatalog.mp.microsoft.com
@@ -21,9 +22,14 @@ dl.delivery.mp.microsoft.com
 dlassets.xboxlive.com
 dlassets2.xboxlive.com
 dns.msftncsi.com
+download.microsoft.com
 download.windowsupdate.com
 ds.download.windowsupdate.com
 fe3.delivery.dsp.mp.microsoft.com.nsatc.net
+fg.download.windowsupdate.com.c.footprint.net
+fg.ds.b1.download.windowsupdate.com
+fg.v4.download.windowsupdate.com
+fgipv6.download.windowsupdate.com.mwcname.com
 g.live.com
 geo-prod.do.dsp.mp.microsoft.com
 i.s-microsoft.com

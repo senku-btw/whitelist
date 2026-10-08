@@ -9,6 +9,7 @@ audio-akp.spotify.com.edgesuite.net
 audio-fa.scdn.co
 audio-fa.spotify.com
 audio-sp.spotify.com
+chtbl.com
 exp.wg.spotify.com
 i.scdn.co
 open.spotify.com

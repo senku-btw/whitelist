@@ -1,0 +1,3 @@
+chatapi.viber.com
+chats.viber.com
+download.viber.com

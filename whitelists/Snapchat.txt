@@ -3,6 +3,7 @@ aws.api.snapchat.com
 aws.duplex.snapchat.com
 bolt-gcdn.sc-cdn.net
 cf-st.sc-cdn.net
+chat-gateway-prod.chat.snapchat.com
 gcp.api.snapchat.com
 gcs.sc-cdn.net
 www.snapchat.com
