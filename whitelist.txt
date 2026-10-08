@@ -84,7 +84,6 @@ en.wiktionary.org
 en.m.wikipedia.com
 en.m.wikipedia.org
 en.m.wiktionary.org
-dropbox-api.arkoselabs.com
 1password.com
 1password.eu
 bitwarden.com
@@ -115,10 +114,7 @@ f-secure.net
 dl.flathub.org
 dl.humble.com
 dl.opensubtitles.org
-dl-web.dropbox.com
 dl-media.viber.com
-dl-doc.dropbox.com
-dl-doc.dropboxusercontent.com
 digicert.com
 desktop.github.com
 connect.soundcloud.com
@@ -133,7 +129,6 @@ thetvdb.com
 tinyurl.com
 akamaitechnologies.com
 jquery.com
-client.dropbox.com
 jsdelivr.net
 akamaized.net
 amazonaws.com
@@ -142,7 +137,6 @@ amzn.to
 anchor.fm
 api-global.netflix.com
 api.adguard.com
-api.dropbox.com
 api.fast.com
 api.github.com
 api.notion.com
@@ -190,14 +184,12 @@ centos.mirrors.theom.nz
 centos.org
 centos.serverforge.org
 centos.vwtonline.net
-cfl.dropboxstatic.com
 chocolatey.org
 clearos.bhs.mirrors.ovh.net
 clearos.com
 clearos.mirrors.ovh.net
 clearos.uberglobalmirror.com
 clearsdn.com
-client.dropbox.com
 cloudflare.com
 cloudfront.net
 code.cdn.mozilla.net
@@ -210,7 +202,6 @@ crl4.digicert.com
 ctldl.windowsupdate.com
 cutt.ly
 cz.wikipedia.com
-d.dropbox.com
 dash.cloudflare.com
 dashboard.snapcraft.io
 db.tt
@@ -224,9 +215,6 @@ developer.spotify.com
 developer.vimeo.com
 developers.cloudflare.com
 deviantart.com
-dl-web.dropbox.com
-dl.dropbox.com
-dl.dropboxusercontent.com
 dl.opensubtitles.org
 dns.cloudflare.com
 dovetail-router.u.prx.tech
@@ -237,16 +225,6 @@ download.mozilla.org
 download.sysinternals.com
 download.visualstudio.microsoft.com
 download.wikipedia.com
-dropbox-dns.com
-dropbox.com
-dropboxapi.com
-dropboxbusiness.com
-dropboxcaptcha.com
-dropboxforum.com
-dropboxforums.com
-dropboxpartners.com
-dropboxstatic.com
-dropboxusercontent.com
 duckduckgo.com
 en.m.wikipedia.com
 en.m.wikipedia.org
@@ -275,7 +253,6 @@ g.static.mega.co.nz
 get.xda-developers.com
 getadhell.com
 getblockify.com
-getdropbox.com
 getfedora.org
 gfwsl.geforce.com
 ghcr.io
