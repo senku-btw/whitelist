@@ -71,7 +71,6 @@ clearsdn.com
 cloud.github.com
 cloudflare.com
 cloudflare.net
-cloudflareinsights.com
 cloudfront.net
 cnnct.soundcloud.com
 code.cdn.mozilla.net
