@@ -26,8 +26,6 @@ themoviedb.com
 chtbl.com
 amazonaws.com
 s3.amazonaws.com
-reddit-uploaded-media.s3-accelerate.amazonaws.com
-whispersystems-textsecure-attachments.s3-accelerate.amazonaws.com
 i.scdn.co
 i.imgur.com
 gist.github.com
@@ -37,8 +35,6 @@ giphy.com
 gist.github.com
 gist.githubusercontent.com
 git.io
-git.teknik.io
-git.vulnix.sh
 gitbook.com
 gitcdn.link
 gitcdn.xyz
@@ -147,7 +143,6 @@ api.raindrop.io
 api.snapcraft.io
 api.vimeo.com
 app.raindrop.io
-app.twitch.tv
 appboot.netflix.com
 archlinux.org
 aspnetcdn.com
@@ -242,7 +237,6 @@ fi.m.wikipedia.com
 fi.wikipedia.com
 filterlists.com
 freebsd.org
-ftp.cdnrobot.xyz
 ftp.chocolatey.org
 ftp.de.debian.org
 ftp.mozilla.org
@@ -257,13 +251,6 @@ gfwsl.geforce.com
 ghcr.io
 giphy.com
 gist.github.com
-ext-twitch.tv
-jtvnw.net
-live-video.net
-ttvnw.net
-twitch.tv
-twitchcdn.net
-twitchsvc.net
 gist.githubusercontent.com
 github-cloud.s3.amazonaws.com
 github-production-user-asset-6210df.s3.amazonaws.com
@@ -342,9 +329,6 @@ mozilla.net
 mozilla.org
 mpv.io
 mwbsys.com
-myaddr.dev
-myaddr.io
-myaddr.tools
 mysql.com
 notion.so
 nuget.org
