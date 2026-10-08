@@ -78,7 +78,6 @@ swpost.apple.com
 swscan.apple.com
 tbsc.apple.com
 token.safebrowsing.apple
-trailers.apple.com
 updates-http.cdn-apple.com
 updates.cdn-apple.com
 valid.apple.com

@@ -11,7 +11,6 @@ dl.dropbox.com
 dl.dropboxusercontent.com
 dropbox-api.arkoselabs.com
 dropbox-debug.com
-dropbox-dns.com
 dropbox.com
 dropbox.tech
 dropbox.zendesk.com

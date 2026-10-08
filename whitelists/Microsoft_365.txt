@@ -49,7 +49,6 @@ msocdn.com
 msocsp.com
 nexus.microsoftonline-p.com
 notification.api.microsoftstream.com
-nrb.footprintdns.com
 o365filtering.com
 office.com
 office.de

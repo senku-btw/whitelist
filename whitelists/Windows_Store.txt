@@ -1,0 +1,14 @@
+1storecatalogrevocation.storequality.microsoft.com
+assets1.xboxlive.com
+assets2.xboxlive.com
+displaycatalog.mp.microsoft.com
+dl.delivery.mp.microsoft.com
+dlassets.xboxlive.com
+dlassets2.xboxlive.com
+fe3.delivery.dsp.mp.microsoft.com.nsatc.net
+geo-prod.do.dsp.mp.microsoft.com
+sls.update.microsoft.com.akadns.net
+store-images.s-microsoft.com
+storecatalogrevocation.storequality.microsoft.com
+storeedgefd.dsx.mp.microsoft.com
+tlu.dl.delivery.mp.microsoft.com

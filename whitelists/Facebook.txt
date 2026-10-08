@@ -1,6 +1,5 @@
 api.facebook.com
 b-api.facebook.com
-b-graph.facebook.com
 b-www.facebook.com
 beta.facebook.com
 bigzipfiles.facebook.com
@@ -40,7 +39,6 @@ facechat.com
 fb.com
 fb.me
 fbcdn-creative-a.akamaihd.net
-graph.facebook.com
 h.beta.facebook.com
 h.facebook.com
 instagram.c10r.facebook.com

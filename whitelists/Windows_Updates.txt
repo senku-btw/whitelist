@@ -1,0 +1,10 @@
+2.au.download.windowsupdate.com
+au.download.windowsupdate.com
+au.v4.download.windowsupdate.com
+displaycatalog.mp.microsoft.com
+dl.delivery.mp.microsoft.com
+download.windowsupdate.com
+download.windowsupdate.com.c.footprint.net
+ds.download.windowsupdate.com
+geo-prod.do.dsp.mp.microsoft.com
+store-images.microsoft.com

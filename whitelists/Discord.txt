@@ -25,7 +25,6 @@ discordpartygames.com
 discords.com
 discordsays.com
 discordstatus.com
-disqusads.com
 disquscdn.com
 dl-canary.discordapp.net
 dl-client.dropbox.com
