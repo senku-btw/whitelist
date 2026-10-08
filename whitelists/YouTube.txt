@@ -8,7 +8,6 @@ i4.ytimg.com
 i9.ytimg.com
 img.youtube.com
 m.youtube.com
-manifest.googlevideo.com
 oauthaccountmanager.googleapis.com
 redirector.googlevideo.com
 s.youtube.com
