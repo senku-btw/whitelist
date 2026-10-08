@@ -229,7 +229,6 @@ centos.serverforge.org
 centos.vwtonline.net
 cfl.dropboxstatic.com
 chocolatey.org
-chrome.cloudflare-dns.com
 clearos.bhs.mirrors.ovh.net
 clearos.com
 clearos.mirrors.ovh.net
