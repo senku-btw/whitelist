@@ -1,3 +1,6 @@
+chrome.com
 chrome.google.com
+chromestatus.com
+chromewhois.com
+chromium.org
 dl.google.com
-webcache.googleusercontent.com

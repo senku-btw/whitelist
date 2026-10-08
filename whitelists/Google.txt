@@ -19,14 +19,10 @@ appsbackup-pa.googleapis.com
 appspot-preview.l.google.com
 books.google.com
 chrome.adtidy.org
-chrome.com
 chromebook.com
 chromefeedcontentsuggestions-pa.googleapis.com
-chromestatus.com
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
-chromewhois.com
-chromium.org
 ci4.googleusercontent.com
 ci5.googleusercontent.com
 client-channel.google.com
@@ -95,7 +91,6 @@ googleforwork.com
 googlehosted.com
 googlehosted.googleusercontent.com
 googlehosted.l.googleusercontent.com
-googlemail.com
 googlepagecreator.com
 googlescholar.com
 googlesciencefair.com
@@ -138,6 +133,5 @@ update.googleapis.com
 video.google.com
 webcache.googleusercontent.com
 www.google.com
-xmpp-server.l.google.com
 youtube.l.google.com
 ytimg.l.google.com

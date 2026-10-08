@@ -5,8 +5,10 @@ chatenabled.mail.google.com
 gmail-smtp-in.l.google.com
 gmail.com
 gmail.google.com
+googlemail.com
 googlemail.l.google.com
 googlemaps.com
 inbox.google.com
 mail.google.com
 mail.plus.google.com
+xmpp-server.l.google.com

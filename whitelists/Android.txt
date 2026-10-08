@@ -5,3 +5,4 @@ clients3.google.com
 clients4.google.com
 clients5.google.com
 mtalk.google.com
+talk.google.com
