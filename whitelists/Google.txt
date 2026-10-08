@@ -78,7 +78,6 @@ gemini.gstatic.com
 geo3.ggpht.com
 goo-gl.me
 goo.gl
-google.com
 googleapis.com
 googleapis.l.google.com
 googleapps.com
@@ -132,6 +131,5 @@ talkx.l.google.com
 update.googleapis.com
 video.google.com
 webcache.googleusercontent.com
-www.google.com
 youtube.l.google.com
 ytimg.l.google.com

@@ -9,7 +9,6 @@ i9.ytimg.com
 img.youtube.com
 m.youtube.com
 oauthaccountmanager.googleapis.com
-redirector.googlevideo.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
@@ -28,7 +27,6 @@ youtube-ui.l.google.com
 youtube.com
 youtube.googleapis.com
 youtube.l.google.com
-youtubei.googleapis.com
 yt3.ggpht.com
 ytimg.com
 ytimg.l.google.com
