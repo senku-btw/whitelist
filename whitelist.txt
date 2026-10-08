@@ -348,8 +348,6 @@ myaddr.io
 myaddr.tools
 mysql.com
 notion.so
-ns1.dropbox.com
-ns2.dropbox.com
 nuget.org
 nvidia.com
 nz.static.mega.co.nz
