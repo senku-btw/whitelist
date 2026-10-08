@@ -1,11 +1,9 @@
 0.gravatar.com
 0.wikipedia.com
 2.android.pool.ntp.org
-activate.adobe.com
 addons.cdn.mozilla.net
 addons.mozilla.org
 adguard.com
-akamaihd.net
 github.com
 github.io
 raw.githubusercontent.com
@@ -23,7 +21,6 @@ hls.ted.com
 tedcdn.com
 thetvdb.com
 themoviedb.com
-chtbl.com
 amazonaws.com
 s3.amazonaws.com
 i.scdn.co
@@ -41,11 +38,7 @@ gitcdn.xyz
 gitea.com
 gitea.io
 gl.gravatar.com
-1drv.com
 amazonaws.com
-dl.delivery.mp.microsoft.com
-download.sonarr.tv
-dynupdate.no-ip.com
 github.com
 themoviedb.com
 thetvdb.com
@@ -89,12 +82,9 @@ bitwarden.com
 vault.bitwarden.com
 lastpass.com
 dashlane.com
-vault.bitwarden.com
 lastpass.com
 vanguard.com
 microsoft.com
-azure.com
-azureedge.net
 cloudflare.com
 cloudflare.net
 amazonaws.com
@@ -103,14 +93,12 @@ dashlane.com
 auth0.com
 download.wikipedia.com
 download.visualstudio.microsoft.com
-download.viber.com
 f-secure.com
 f-secure.com.pl
 f-secure.net
 dl.flathub.org
 dl.humble.com
 dl.opensubtitles.org
-dl-media.viber.com
 digicert.com
 desktop.github.com
 connect.soundcloud.com
@@ -126,7 +114,6 @@ tinyurl.com
 akamaitechnologies.com
 jquery.com
 jsdelivr.net
-akamaized.net
 amazonaws.com
 amzn.com
 amzn.to
@@ -138,7 +125,6 @@ api.github.com
 api.notion.com
 api.opensubtitles.org
 api.paypal.com
-api.pushbullet.com
 api.raindrop.io
 api.snapcraft.io
 api.vimeo.com
@@ -155,7 +141,6 @@ avatars2.githubusercontent.com
 avatars3.githubusercontent.com
 bbc.co.uk
 bbc.com
-bit.ly
 bitdefender.net
 bs.to
 bugzilla.mozilla.org
@@ -194,12 +179,9 @@ content.cloudflare.com
 crl.usertrust.com
 crl.verisign.com
 crl4.digicert.com
-ctldl.windowsupdate.com
-cutt.ly
 cz.wikipedia.com
 dash.cloudflare.com
 dashboard.snapcraft.io
-db.tt
 de.wikipedia.com
 debian.map.fastlydns.net
 debian.org
@@ -214,7 +196,6 @@ dl.opensubtitles.org
 dovetail-router.u.prx.tech
 dovetail.prxu.org
 m.imgur.com
-download.microsoft.com
 download.mozilla.org
 download.sysinternals.com
 download.visualstudio.microsoft.com
@@ -264,7 +245,6 @@ githubusercontent.com
 gitlab.com
 gitlab.io
 gitter.im
-goo.gl
 gravatar.com
 greasyfork.org
 guardianproject.info
@@ -291,7 +271,6 @@ img.xda-developers.com
 imgix.net
 intel.com
 intel.com.au
-is.gd
 it.wikipedia.com
 jboss.org
 jp.wikipedia.com
@@ -352,7 +331,6 @@ ocsp.verisign.com
 ooklaserver.net
 opensubtitles.org
 opensuse.org
-ow.ly
 paypal.com
 paypal.de
 pdst.fm
@@ -412,7 +390,6 @@ support.system76.com
 support2.kaspersky.com
 susecloud.net
 sv.wikipedia.com
-t.ly
 ta.wikipedia.com
 themes.mozilla.org
 themoviedb.com
@@ -424,7 +401,6 @@ time.apple.com
 time.cloudflare.com
 time.google.com
 time.windows.com
-tinyurl.com
 traffic.libsyn.com
 ubuntu.com
 update.code.visualstudio.com
@@ -450,9 +426,6 @@ wikipedia.org
 wordpress.com
 wordpress.org
 wp.com
-www.adf.ly
-www.bit.ly
 www.gravatar.com
 www.notion.so
-www.ow.ly
 www.xda-developers.com
