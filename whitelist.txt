@@ -216,7 +216,6 @@ developer.vimeo.com
 developers.cloudflare.com
 deviantart.com
 dl.opensubtitles.org
-dns.cloudflare.com
 dovetail-router.u.prx.tech
 dovetail.prxu.org
 m.imgur.com
