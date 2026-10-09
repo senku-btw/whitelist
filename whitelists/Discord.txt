@@ -3,13 +3,8 @@ discord.com
 discord.gg
 discord.me
 discord.media
-discord.store
 discord.tools
 discordapp.com
-discordicon.com
-discordstatus.com
-dl-sdk.discordapp.net
-dl.discordapp.net
 gateway.discord.gg
 images-1.discordapp.net
 images-2.discordapp.net
