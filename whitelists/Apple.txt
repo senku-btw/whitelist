@@ -14,8 +14,6 @@ ax.phobos.apple.com.edgesuite.net
 bpapi.apple.com
 c.apple.com
 captive.apple.com
-chatbox-web.apple.com
-chatbox-web.apple.com.akadns.net
 configuration.apple.com
 configuration.apple.com.akadns.net
 crl.apple.com
