@@ -1,7 +1,6 @@
 0.client-channel.google.com
 accounts.google.com
 ajax.googleapis.com
-android.com
 androidtvchannels-pa.googleapis.com
 androidtvwatsonfe-pa.googleapis.c
 androidtvwatsonfe-pa.googleapis.com
@@ -21,16 +20,11 @@ client-channel.google.com
 clients.google.com
 clients.l.google.com
 clients0.google.com
-clients1.google.com
 clients1.google.com.hk
 clients1.googleusercontent.com
-clients2.google.com
 clients2.googleusercontent.com
-clients3.google.com
 clients3.googleusercontent.com
-clients4.google.com
 clients4.googleusercontent.com
-clients5.google.com
 clients5.googleusercontent.com
 clients6.google.com
 clients6.google.com.hk
@@ -112,7 +106,6 @@ securetoken.googleapis.com
 security.google.com
 storage.cloud.google.com
 storage.googleapis.com
-talk.google.com
 talk.l.google.com
 talkgadget.google.com
 talks.l.google.com
