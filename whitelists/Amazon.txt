@@ -1,11 +1,9 @@
-2mcmg31d.r.us-east-1.awstrack.me
+
 aan.amazon.com
-aax-us-iad.amazon.com
 amazon.com
 amazonaws.com
 amzn.to
 api.eu-west-1.aiv-delivery.net
-awstrack.me
 cloudsync-prod.s3.amazonaws.com
 device-messaging-na.amazon.com
 devicemessaging.us-east-1.amazon.com
