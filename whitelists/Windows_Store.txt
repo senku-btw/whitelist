@@ -1,4 +1,3 @@
-1storecatalogrevocation.storequality.microsoft.com
 assets1.xboxlive.com
 assets2.xboxlive.com
 displaycatalog.mp.microsoft.com
