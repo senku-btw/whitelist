@@ -7,7 +7,6 @@ gmail.com
 gmail.google.com
 googlemail.com
 googlemail.l.google.com
-googlemaps.com
 inbox.google.com
 mail.google.com
 mail.plus.google.com

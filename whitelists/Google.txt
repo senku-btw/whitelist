@@ -41,7 +41,6 @@ fonts.googleapis.com
 fonts.gstatic.com
 gemini.google.com
 gemini.gstatic.com
-geo3.ggpht.com
 googleapis.com
 googleapis.l.google.com
 googleapps.com
