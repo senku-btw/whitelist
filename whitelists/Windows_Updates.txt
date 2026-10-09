@@ -2,6 +2,7 @@
 au.download.windowsupdate.com
 au.v4.download.windowsupdate.com
 ctldl.windowsupdate.com
+definitionupdates.microsoft.com
 displaycatalog.mp.microsoft.com
 dl.delivery.mp.microsoft.com
 download.windowsupdate.com

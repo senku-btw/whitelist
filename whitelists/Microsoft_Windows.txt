@@ -1,12 +1,8 @@
 account.live.com
 acctcdn.msauth.net
 acctcdn.msftauth.net
-api.msn.com
-assets.msn.com
 auth.microsoft.com
 browser.pipe.aria.microsoft.com
-c.msn.com
-c.s-microsoft.com
 ccs.login.microsoftonline.com
 client.wns.windows.com
 dc.services.visualstudio.com
@@ -16,19 +12,14 @@ i.s-microsoft.com
 ipv6.msftncsi.com
 login.live.com
 login.microsoftonline.com
-mem.gfx.ms
 mobile.events.data.microsoft.com
 msedge.api.cdp.microsoft.com
 msftncsi.com
-ntp.msn.com
 officeclient.microsoft.com
 outlook.office365.com
-products.office.com
-ris.api.iris.microsoft.com
 settings.data.microsoft.com
 smartscreen-prod.microsoft.com
 smartscreen.microsoft.com
-srtb.msn.com
 tsfe.trafficshaping.dsp.mp.microsoft.com
 wcpstatic.microsoft.com
 wdcp.microsoft.com
@@ -36,4 +27,3 @@ wdcpalt.microsoft.com
 wns.windows.com
 www.msftconnecttest.com
 www.msftncsi.com
-www.msn.com
