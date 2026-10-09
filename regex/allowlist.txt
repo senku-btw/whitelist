@@ -1,3 +1,5 @@
+*.push.apple.com -- Apple
+
 ^traffic\.(|va[0-9]\.)megaphone\.(fm|cloud)$ -- Default
 
 (^|\.)githubusercontent\.com$ -- Default/hosts

@@ -25,14 +25,9 @@ crl4.digicert.com
 cssubmissions.apple.com
 deviceenrollment.apple.com
 deviceservices-external.apple.com
-diagassets.apple.com
-discussions.apple.com
 fba.apple.com
-feedbackws.icloud.com
 gdmf.apple.com
 gg.apple.com
-gnf-mdn.apple.com
-gnf-mr.apple.com
 gs.apple.com
 gsa.apple.com
 gsa.apple.com.akadns.net
