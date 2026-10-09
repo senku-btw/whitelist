@@ -3,7 +3,6 @@ au.download.windowsupdate.com
 au.v4.download.windowsupdate.com
 ctldl.windowsupdate.com
 definitionupdates.microsoft.com
-displaycatalog.mp.microsoft.com
 dl.delivery.mp.microsoft.com
 download.windowsupdate.com
 download.windowsupdate.com.c.footprint.net
@@ -15,5 +14,4 @@ fg.v4.download.windowsupdate.com
 fgipv6.download.windowsupdate.com.mwcname.com
 geo-prod.do.dsp.mp.microsoft.com
 sls.update.microsoft.com.akadns.net
-store-images.microsoft.com
 tlu.dl.delivery.mp.microsoft.com
