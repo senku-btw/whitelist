@@ -4,7 +4,6 @@ ajax.googleapis.com
 appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com
 chrome.adtidy.org
-chromefeedcontentsuggestions-pa.googleapis.com
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
 ci4.googleusercontent.com
@@ -35,13 +34,6 @@ device-provisioning.googleapis.com
 deviceintegritytokens-pa.googleapis.com
 dl-ssl.google.com
 dl.l.google.com
-docs.google.com
-docs0.google.com
-docs1.google.com
-docs2.google.com
-documents.google.com
-drive-thirdparty.googleusercontent.com
-drive.google.com
 firebaselogging-pa.googleapis.com
 firebaseremoteconfig.googleapis.com
 firebasestorage.googleapis.com
@@ -78,7 +70,6 @@ redirector.gvt2.com
 script.google.com
 securetoken.googleapis.com
 security.google.com
-storage.cloud.google.com
 storage.googleapis.com
 talk.l.google.com
 talkgadget.google.com
@@ -88,4 +79,3 @@ update.googleapis.com
 video.google.com
 webcache.googleusercontent.com
 youtube.l.google.com
-ytimg.l.google.com
