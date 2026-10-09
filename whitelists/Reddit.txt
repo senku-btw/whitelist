@@ -1,5 +1,4 @@
 cdn.embedly.com
-e.reddit.com
 external-preview.redd.it
 f.thumbs.redditmedia.com
 gateway.reddit.com
