@@ -2,17 +2,14 @@ account.live.com
 acctcdn.msauth.net
 acctcdn.msftauth.net
 auth.microsoft.com
-browser.pipe.aria.microsoft.com
 ccs.login.microsoftonline.com
 client.wns.windows.com
-dc.services.visualstudio.com
 download.microsoft.com
 g.live.com
 i.s-microsoft.com
 ipv6.msftncsi.com
 login.live.com
 login.microsoftonline.com
-mobile.events.data.microsoft.com
 msedge.api.cdp.microsoft.com
 msftncsi.com
 officeclient.microsoft.com
