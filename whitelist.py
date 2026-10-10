@@ -531,13 +531,27 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
 
 def export_regex_allowlist(cfg: AppConfig) -> None:
-    """Export regex allow entries to regex/allowlist.txt using comment groups."""
-    query = "SELECT domain, comment FROM domainlist WHERE type = ?"
+    """Export regex allow entries excluding healthcheck/hosts group or comment."""
+    query = """
+        SELECT DISTINCT d.domain, d.comment, g.name
+        FROM domainlist d
+        LEFT JOIN domainlist_by_group dg ON d.id = dg.domainlist_id
+        LEFT JOIN "group" g ON dg.group_id = g.id
+        WHERE d.type = ?
+    """
     rows = execute_read(cfg, query, (DOMAIN_TYPE_REGEX,))
 
     regex_dict: Dict[str, Set[str]] = {}
 
-    for domain, comment in rows:
+    for domain, comment, group_name in rows:
+        tags = parse_comment_categories(comment)
+        tag_match = any(t.lower() in ("healthcheck", "hosts") for t in tags)
+        group_match = group_name and group_name.lower() in ("healthcheck", "hosts")
+
+        # Skip/exclude rules that belong to healthcheck or hosts
+        if tag_match or group_match:
+            continue
+
         sanitized_pattern = "".join(
             char for char in domain if char.isprintable() and not char.isspace()
         )
@@ -559,7 +573,7 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
 
     allowlist_path = regex_dir / "allowlist.txt"
     write_atomic(allowlist_path, output_lines)
-    logger.info("Exported regex allowlist to %s", allowlist_path)
+    logger.info("Exported filtered regex allowlist (excluding healthcheck/hosts) to %s", allowlist_path)
 
 
 def push_to_github(cfg: AppConfig) -> None:
