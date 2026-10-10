@@ -5,7 +5,6 @@
 2.android.pool.ntp.org
 addons.cdn.mozilla.net
 addons.mozilla.org
-assets.f-secure.com
 adguard.com
 akamaitechnologies.com
 amazonaws.com
@@ -28,6 +27,7 @@ appboot.netflix.com
 archlinux.org
 aspnetcdn.com
 assets-cdn.github.com
+assets.f-secure.com
 assets.gitlab-static.net
 assets.vimeo.com
 auth0.com
@@ -213,6 +213,7 @@ keystone.mwbsys.com
 lastfm-img2.akamaized.net
 lastpass.com
 launchpad.net
+links.duckduckgo.com
 linuxmint.com
 lm.licenses.adobe.com
 m.codemasters.com
@@ -238,7 +239,6 @@ mediafire.com
 mega.co.nz
 mega.io
 mega.nz
-www.f-secure.com
 microsoft.com
 mirrorlist.centos.org
 mobileproxy.space
@@ -369,6 +369,7 @@ wikipedia.org
 wordpress.com
 wordpress.org
 wp.com
+www.f-secure.com
 www.gravatar.com
 www.notion.so
 www.xda-developers.com
