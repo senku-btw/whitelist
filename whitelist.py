@@ -393,6 +393,25 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
         write_atomic(file_path, sorted(list(domains)))
 
 
+def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -> None:
+    """Exclusively assign domains/adlists matching comments to a group."""
+    if spec.group_id is None:
+        return
+    placeholders = " OR ".join(["comment = ?"] * len(spec.comments))
+    query = f"SELECT id FROM {spec.table} WHERE ({placeholders}) AND {spec.type_cond}"
+    cursor.execute(query, spec.comments)
+    ids = [row[0] for row in cursor.fetchall()]
+    if ids:
+        cursor.executemany(
+            f"DELETE FROM {spec.link_table} WHERE {spec.fk_col} = ?",
+            [(item_id,) for item_id in ids],
+        )
+        cursor.executemany(
+            f"INSERT INTO {spec.link_table} ({spec.fk_col}, group_id) VALUES (?, ?)",
+            [(item_id, spec.group_id) for item_id in ids],
+        )
+
+
 def _recreate_groups(
     cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
 ) -> Dict[str, int]:
