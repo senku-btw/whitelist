@@ -1,3 +1,7 @@
+about.youtube.com
+api.youtube.com
+creators.youtube.com
+gaming.youtube.com
 googlevideo.com
 history.google.com
 i.ytimg.com
@@ -6,12 +10,19 @@ i3.ytimg.com
 i4.ytimg.com
 i9.ytimg.com
 img.youtube.com
+kids.youtube.com
 m.youtube.com
+music.youtube.com
+partners.youtube.com
+s.googlevideo.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
 sponsor.ajay.app
+studio.youtube.com
+tv.youtube.com
 video-stats.l.google.com
+watch.youtube.com
 www.googleapis.com
 www.youtube-nocookie.com
 www.youtube.com
@@ -22,6 +33,9 @@ youtube-ui.l.google.com
 youtube.com
 youtube.googleapis.com
 youtube.l.google.com
+youtubei.googleapis.com
+yt.moatads.com
 yt3.ggpht.com
 ytimg.com
 ytimg.l.google.com
+z.googlevideo.com
