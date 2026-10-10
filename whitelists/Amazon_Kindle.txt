@@ -1,7 +1,3 @@
-aan.amazon.com
-amazon.com
-amazonaws.com
-amzn.to
 api.eu-west-1.aiv-delivery.net
 cloudsync-prod.s3.amazonaws.com
 device-messaging-na.amazon.com
@@ -12,5 +8,3 @@ fls-na.amazon.com
 images-amazon.com
 msh.amazon.co.uk
 s3.amazonaws.com
-unagi.amazon.it
-www.amazon.com
