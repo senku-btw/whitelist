@@ -237,6 +237,7 @@ mediafire.com
 mega.co.nz
 mega.io
 mega.nz
+www.f-secure.com
 microsoft.com
 mirrorlist.centos.org
 mobileproxy.space
