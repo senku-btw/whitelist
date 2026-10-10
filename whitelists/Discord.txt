@@ -3,8 +3,13 @@ discord.com
 discord.gg
 discord.me
 discord.media
+discord.new
 discord.tools
 discordapp.com
+discordapp.net
+discordcdn.com
+discordstatus.com
+gateway-us-east1-c.discord.gg
 gateway.discord.gg
 images-1.discordapp.net
 images-2.discordapp.net
@@ -13,3 +18,4 @@ images-ext-2.discordapp.net
 images.discordapp.net
 media.discordapp.net
 status.discord.com
+streamkit.discord.com
