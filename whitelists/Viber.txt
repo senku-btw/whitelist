@@ -1,3 +1,4 @@
 chatapi.viber.com
 chats.viber.com
+data-events.cdn.viber.com
 download.viber.com

@@ -3,6 +3,7 @@ accounts.google.com
 ajax.googleapis.com
 appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com
+c.pki.goog
 chrome.adtidy.org
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
@@ -27,6 +28,7 @@ clients8.google.com
 clients9.google.com
 cloud.google.com
 code.google.com
+connectivitycheck.gstatic.com
 console.cloud.google.com
 contacts.google.com
 developers.google.com
@@ -41,6 +43,7 @@ fonts.googleapis.com
 fonts.gstatic.com
 gemini.google.com
 gemini.gstatic.com
+google.com
 googleapis.com
 googleapis.l.google.com
 googleapps.com
@@ -64,12 +67,14 @@ myaccount.google.com
 notifications.google.com
 oauthaccountmanager.googleapis.com
 pki-goog.l.google.com
+play.google.com
 redirector.gvt1.com
 redirector.gvt2.com
 script.google.com
 securetoken.googleapis.com
 security.google.com
 storage.googleapis.com
+t1.gstatic.com
 talk.l.google.com
 talkgadget.google.com
 talks.l.google.com
@@ -77,4 +82,5 @@ talkx.l.google.com
 update.googleapis.com
 video.google.com
 webcache.googleusercontent.com
+www.google.com
 youtube.l.google.com
