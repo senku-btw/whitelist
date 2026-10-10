@@ -291,64 +291,86 @@ def process_special_healthcheck_domains(cfg: AppConfig) -> None:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
-            
+
             for domain in SPECIAL_DOMAINS:
                 sanitized = sanitize_domain(domain)
                 cursor.execute(
-                    "SELECT id, comment FROM domainlist WHERE domain = ? AND type = ?",
-                    (sanitized, DOMAIN_TYPE_EXACT)
+                    "SELECT id, comment FROM domainlist "
+                    "WHERE domain = ? AND type = ?",
+                    (sanitized, DOMAIN_TYPE_EXACT),
                 )
                 row = cursor.fetchone()
-                
+
                 if not row:
                     cursor.execute(
-                        """INSERT INTO domainlist (type, domain, comment, enabled, date_added, date_modified) 
-                           VALUES (?, ?, ?, 1, strftime('%s','now'), strftime('%s','now'))""",
-                        (DOMAIN_TYPE_EXACT, sanitized, "healthcheck")
+                        "INSERT INTO domainlist (type, domain, comment, "
+                        "enabled, date_added, date_modified) "
+                        "VALUES (?, ?, ?, 1, strftime('%s','now'), "
+                        "strftime('%s','now'))",
+                        (DOMAIN_TYPE_EXACT, sanitized, "healthcheck"),
                     )
-                    logger.info("Added missing special healthcheck domain: %s", sanitized)
+                    logger.info(
+                        "Added missing special healthcheck domain: %s",
+                        sanitized,
+                    )
                 else:
                     domain_id, comment = row
                     if comment != "healthcheck":
                         cursor.execute(
-                            "UPDATE domainlist SET comment = 'healthcheck', date_modified = strftime('%s','now') WHERE id = ?",
-                            (domain_id,)
+                            "UPDATE domainlist SET comment = 'healthcheck', "
+                            "date_modified = strftime('%s','now') "
+                            "WHERE id = ?",
+                            (domain_id,),
                         )
-                        logger.info("Updated comment to 'healthcheck' for domain: %s", sanitized)
-                        
+                        logger.info(
+                            "Updated comment to 'healthcheck' for domain: %s",
+                            sanitized,
+                        )
+
     except sqlite3.Error as exc:
-        raise RuntimeError(f"Failed to process special healthcheck domains: {exc}") from exc
+        raise RuntimeError(
+            f"Failed to process special healthcheck domains: {exc}"
+        ) from exc
 
 
-def ensure_special_domains_dual_group(cfg: AppConfig, group_map: Dict[str, int]) -> None:
+def ensure_special_domains_dual_group(
+    cfg: AppConfig, group_map: Dict[str, int]
+) -> None:
     """Implement condition (c): Assign special domains to both Default and healthcheck groups."""
     hc_gid = group_map.get("healthcheck")
     if hc_gid is None:
         return
-        
+
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             cursor = conn.cursor()
             for domain in SPECIAL_DOMAINS:
                 sanitized = sanitize_domain(domain)
                 cursor.execute(
-                    "SELECT id FROM domainlist WHERE domain = ? AND type = ?",
-                    (sanitized, DOMAIN_TYPE_EXACT)
+                    "SELECT id FROM domainlist "
+                    "WHERE domain = ? AND type = ?",
+                    (sanitized, DOMAIN_TYPE_EXACT),
                 )
                 row = cursor.fetchone()
                 if row:
                     domain_id = row[0]
                     cursor.execute(
-                        "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
-                        (domain_id, DEFAULT_GROUP_ID)
+                        "INSERT OR IGNORE INTO domainlist_by_group "
+                        "(domainlist_id, group_id) VALUES (?, ?)",
+                        (domain_id, DEFAULT_GROUP_ID),
                     )
                     cursor.execute(
-                        "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
-                        (domain_id, hc_gid)
+                        "INSERT OR IGNORE INTO domainlist_by_group "
+                        "(domainlist_id, group_id) VALUES (?, ?)",
+                        (domain_id, hc_gid),
                     )
-        logger.info("Enforced dual-group assignment for special healthcheck domains.")
+        logger.info(
+            "Enforced dual-group assignment for special healthcheck domains."
+        )
     except sqlite3.Error as exc:
-        raise RuntimeError(f"Failed to assign dual groups for special domains: {exc}") from exc
+        raise RuntimeError(
+            f"Failed to assign dual groups for special domains: {exc}"
+        ) from exc
 
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
