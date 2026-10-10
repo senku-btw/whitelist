@@ -452,8 +452,14 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             cursor = conn.cursor()
 
             # Fix typos in comments ('healtcheck' -> 'healthcheck')
-            cursor.execute("UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
-            cursor.execute("UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
+            cursor.execute(
+                "UPDATE domainlist SET comment = 'healthcheck' "
+                "WHERE comment = 'healtcheck'"
+            )
+            cursor.execute(
+                "UPDATE adlist SET comment = 'healthcheck' "
+                "WHERE comment = 'healtcheck'"
+            )
 
             cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
             client_backups = cursor.fetchall()
@@ -530,7 +536,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
         ) from exc
 
 
-def export_regex_allowlist(cfg: AppConfig) -> None:
+def export_regex_allowlist(cfg: AppConfig) -> None:  # pylint: disable=too-many-locals
     """Export regex allow entries excluding healthcheck/hosts group or comment."""
     query = """
         SELECT DISTINCT d.domain, d.comment, g.name
@@ -573,7 +579,10 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
 
     allowlist_path = regex_dir / "allowlist.txt"
     write_atomic(allowlist_path, output_lines)
-    logger.info("Exported filtered regex allowlist (excluding healthcheck/hosts) to %s", allowlist_path)
+    logger.info(
+        "Exported filtered regex allowlist (excluding healthcheck/hosts) to %s",
+        allowlist_path,
+    )
 
 
 def push_to_github(cfg: AppConfig) -> None:
@@ -611,18 +620,19 @@ def push_to_github(cfg: AppConfig) -> None:
     )
 
     try:
-        subprocess.Popen(
+        with subprocess.Popen(
             ["git", "push"],
             cwd=cfg.repo_dir,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
             start_new_session=True,
-        )
+        ) as _:
+            pass
         logger.info(
             "Step 4 Complete: Commit '%s' created and push dispatched.",
             commit_msg,
         )
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.error("Failed to start background git push: %s", exc, exc_info=True)
         raise RuntimeError(f"Background push failed: {exc}") from exc
 
@@ -657,7 +667,7 @@ def main() -> None:
         push_to_github(cfg)
         logger.info("Automation sequence completed successfully.")
 
-    except Exception as exc:
+    except Exception as exc:  # pylint: disable=broad-exception-caught
         logger.critical("FATAL ERROR: %s", exc, exc_info=True)
         sys.exit(1)
 
