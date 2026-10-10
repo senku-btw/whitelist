@@ -2,8 +2,10 @@ account.live.com
 acctcdn.msauth.net
 acctcdn.msftauth.net
 auth.microsoft.com
+c.s-microsoft.com
 ccs.login.microsoftonline.com
 client.wns.windows.com
+continuum.dds.microsoft.com
 download.microsoft.com
 g.live.com
 i.s-microsoft.com
@@ -14,10 +16,12 @@ msedge.api.cdp.microsoft.com
 msftncsi.com
 officeclient.microsoft.com
 outlook.office365.com
+settings-win.data.microsoft.com
 settings.data.microsoft.com
 smartscreen-prod.microsoft.com
 smartscreen.microsoft.com
 tsfe.trafficshaping.dsp.mp.microsoft.com
+v10.vortex-win.data.microsoft.com
 wcpstatic.microsoft.com
 wdcp.microsoft.com
 wdcpalt.microsoft.com

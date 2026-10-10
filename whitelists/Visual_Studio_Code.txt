@@ -1,5 +1,6 @@
 dc.services.visualstudio.com
 marketplace.visualstudio.com
+rt.services.visualstudio.com
 update.code.visualstudio.com
 vscode.blob.core.windows.net
 vscode.download.prss.microsoft.com

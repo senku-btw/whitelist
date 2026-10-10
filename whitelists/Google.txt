@@ -3,6 +3,7 @@ accounts.google.com
 ajax.googleapis.com
 appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com
+appspot-preview.l.google.com
 c.pki.goog
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
@@ -29,6 +30,7 @@ cloud.google.com
 code.google.com
 console.cloud.google.com
 contacts.google.com
+cse.google.com
 developers.google.com
 device-provisioning.googleapis.com
 deviceintegritytokens-pa.googleapis.com
@@ -52,6 +54,7 @@ googlesource.com
 googleusercontent.com
 groups.google.com
 groups.l.google.com
+gstatic.com
 id.google.com
 images.google.com
 imasdk.googleapis.com

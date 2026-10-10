@@ -23,9 +23,12 @@ crl4.digicert.com
 cssubmissions.apple.com
 deviceenrollment.apple.com
 deviceservices-external.apple.com
+diagassets.apple.com
 fba.apple.com
 gdmf.apple.com
 gg.apple.com
+gnf-mdn.apple.com
+gnf-mr.apple.com
 gs.apple.com
 gsa.apple.com
 gsa.apple.com.akadns.net
@@ -57,6 +60,7 @@ osrecovery.apple.com
 phobos.apple.com
 ppq.apple.com
 s.mzstatic.com
+sa.symcb.com
 secure-appldnld.apple.com
 serverstatus.apple.com
 setup.icloud.com

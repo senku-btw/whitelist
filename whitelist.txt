@@ -3,11 +3,14 @@
 1password.com
 1password.eu
 2.android.pool.ntp.org
+79423.analytics.edgekey.net
 addons.cdn.mozilla.net
 addons.mozilla.org
 adguard.com
+aexp-static.com
 akamaitechnologies.com
 amazonaws.com
+americanexpress.com
 amzn.com
 amzn.to
 anchor.fm
@@ -39,6 +42,7 @@ bbc.co.uk
 bbc.com
 bitdefender.net
 bitwarden.com
+braintreegateway.com
 bs.to
 bugzilla.mozilla.org
 cacerts.digicert.com
@@ -86,6 +90,7 @@ cz.wikipedia.com
 dash.cloudflare.com
 dashboard.snapcraft.io
 dashlane.com
+dataplicity.com
 de.wikipedia.com
 debian.map.fastlydns.net
 debian.org
@@ -108,6 +113,7 @@ download.sysinternals.com
 download.visualstudio.microsoft.com
 download.wikipedia.com
 duckduckgo.com
+e5.sk
 en.gravatar.com
 en.m.wikipedia.com
 en.m.wikipedia.org
@@ -121,6 +127,8 @@ en.wiktionary.org
 enable-javascript.com
 es.wikipedia.com
 eset.com
+eset.eu
+eset.sk
 eu.wikipedia.com
 f-droid.org
 f-secure.com
@@ -144,6 +152,7 @@ ftp.mozilla.org
 ftprivacy.cloud
 g.api.mega.co.nz
 g.static.mega.co.nz
+gdlp01.c-wss.com
 get.xda-developers.com
 getadhell.com
 getblockify.com
@@ -209,7 +218,11 @@ jboss.org
 jp.wikipedia.com
 jquery.com
 jsdelivr.net
+kas-labs.com
+kaspersky-labs.com
+kaspersky.com
 keystone.mwbsys.com
+labkas.com
 lastfm-img2.akamaized.net
 lastpass.com
 launchpad.net
@@ -267,11 +280,15 @@ ocsp.sectigo.com
 ocsp.thawte.com
 ocsp.usertrust.com
 ocsp.verisign.com
+om.cbsi.com
 ooklaserver.net
 opensubtitles.org
 opensuse.org
+paypal.ca
+paypal.co.uk
 paypal.com
 paypal.de
+paypalobjects.com
 pdst.fm
 pi-hole.net
 pl.wikipedia.com
@@ -293,8 +310,13 @@ raw.githubusercontent.com
 redhat.com
 redhat.io
 res.cloudinary.com
+s1.symcb.com
 s1.wp.com
+s2.symcb.com
 s3.amazonaws.com
+s3.symcb.com
+s4.symcb.com
+s5.symcb.com
 sa.symcb.com
 search.vimeo.com
 secure.avangate.com
@@ -304,6 +326,10 @@ snapcraft.io
 softwarecollections.org
 sourceforge.net
 speedtest.net
+sqspcdn.com
+squarespace-cdn.com
+squarespace-mail.com
+squarespace.com
 static.opensuse.org
 static.oracle.com
 staticcdn.duckduckgo.com
@@ -319,6 +345,9 @@ store.kaspersky.com
 store.mozilla.org
 store.nvidia.com
 streamtape.com
+stripe.com
+stripe.network
+stripecdn.com
 support.apple.com
 support.cloudflare.com
 support.jbhifi.com.au
@@ -369,6 +398,8 @@ wikipedia.org
 wordpress.com
 wordpress.org
 wp.com
+ws.audioscrobbler.com
+www.dataplicity.com
 www.f-secure.com
 www.gravatar.com
 www.notion.so

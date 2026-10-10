@@ -2,6 +2,7 @@ api.dropbox.com
 cfl.dropboxstatic.com
 client.dropbox.com
 d.dropbox.com
+db.tt
 dl-doc.dropbox.com
 dl-doc.dropboxusercontent.com
 dl-web.dropbox.com
@@ -10,6 +11,9 @@ dl.dropboxusercontent.com
 dropbox-api.arkoselabs.com
 dropbox.com
 dropboxapi.com
+dropboxbusiness.com
 dropboxcaptcha.com
+dropboxpartners.com
 dropboxstatic.com
 dropboxusercontent.com
+getdropbox.com

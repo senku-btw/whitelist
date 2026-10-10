@@ -11,6 +11,7 @@ s.youtube.com
 s.ytimg.com
 s2.youtube.com
 sponsor.ajay.app
+video-stats.l.google.com
 www.googleapis.com
 www.youtube-nocookie.com
 www.youtube.com

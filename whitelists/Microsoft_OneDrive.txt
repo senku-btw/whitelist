@@ -24,3 +24,4 @@ support.apple.com
 token.cp.microsoft.com
 tokensit.cp.microsoft-tst.com
 vas.samsungapps.com
+vortex.data.microsoft.com

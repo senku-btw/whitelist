@@ -7,6 +7,7 @@ alt6-mtalk.google.com
 alt7-mtalk.google.com
 alt8-mtalk.google.com
 android.com
+appspot-preview.l.google.com
 clients1.google.com
 clients2.google.com
 clients3.google.com
