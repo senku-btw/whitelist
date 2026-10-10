@@ -18,8 +18,8 @@ DOMAIN_TYPE_REGEX = 2
 DOMAIN_TYPE_WILDCARD = 3
 ADLIST_TYPE = 1
 
-# File-based immutable categories (healthcheck.txt is disabled)
-IMMUTABLE_CATEGORIES = frozenset({"hosts"})
+# File-based immutable categories are disabled (healthcheck.txt and hosts.txt are removed)
+IMMUTABLE_CATEGORIES: FrozenSet[str] = frozenset()
 GROUP_IMMUTABLES = frozenset({"healthcheck", "hosts"})
 
 # --- SQL Queries ---
@@ -283,70 +283,6 @@ def process_step1(cfg: AppConfig) -> None:
     logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
 
 
-def process_immutable_hosts(cfg: AppConfig) -> None:
-    """Merge new 'hosts' DB entries eternally into whitelists/hosts.txt."""
-    query = "SELECT domain FROM domainlist WHERE type = ? AND comment = 'hosts'"
-    db_entries_raw = execute_read(cfg, query, (DOMAIN_TYPE_EXACT,))
-    db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
-
-    hosts_path = cfg.whitelists_dir / "hosts.txt"
-    txt_entries: FrozenSet[str] = frozenset()
-
-    if hosts_path.exists():
-        try:
-            with open(hosts_path, "r", encoding="utf-8") as file_obj:
-                txt_entries = frozenset(
-                    sanitize_domain(line) for line in file_obj if line.strip()
-                )
-        except IOError as exc:
-            raise RuntimeError(f"Failed to read existing hosts.txt: {exc}") from exc
-
-    if not db_entries:
-        logger.info("No new 'hosts' entries to merge from DB.")
-        return
-
-    combined_entries = sorted(list(db_entries | txt_entries))
-    write_atomic(hosts_path, combined_entries)
-
-    params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
-
-    delete_links = SQL_DELETE_LINKS.format(
-        table="domainlist_by_group",
-        fk_col="domainlist_id",
-        base_table="domainlist",
-        extra_cond="AND comment = 'hosts'",
-    )
-    delete_domains = SQL_DELETE_DOMAINS.format(
-        base_table="domainlist", extra_cond="AND comment = 'hosts'"
-    )
-
-    execute_deletions(cfg, delete_links, delete_domains, params, "hosts")
-
-    logger.info(
-        "Extracted, merged, and deleted %d 'hosts' entries from DB.",
-        len(db_entries),
-    )
-
-
-def load_immutable_whitelist(cfg: AppConfig, filename: str) -> FrozenSet[str]:
-    """Read an immutable whitelist file if present."""
-    file_path = cfg.whitelists_dir / filename
-    if not file_path.is_file():
-        return frozenset()
-    try:
-        with open(file_path, "r", encoding="utf-8") as file_obj:
-            domains = frozenset(
-                sanitize_domain(line) for line in file_obj if line.strip()
-            )
-            logger.info(
-                "Cataloged %d entries from immutable %s.", len(domains), filename
-            )
-            return domains
-    except IOError as exc:
-        logger.warning("Failed to read %s: %s", filename, exc)
-        return frozenset()
-
-
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
     """Parse DB and cluster domains into categories, ignoring immutables."""
     rows = execute_read(cfg, SQL_GET_CATEGORIZED_DOMAINS, (DOMAIN_TYPE_EXACT,))
@@ -363,11 +299,6 @@ def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
         for cat, domains in temp_dict.items()
         if len(domains) >= 2 or cat.lower() in IMMUTABLE_CATEGORIES
     }
-
-    for immutable_cat in IMMUTABLE_CATEGORIES:
-        immutable_domains = load_immutable_whitelist(cfg, f"{immutable_cat}.txt")
-        if immutable_domains:
-            categories_result[immutable_cat] = immutable_domains
 
     return categories_result
 
@@ -692,7 +623,6 @@ def main() -> None:
         cfg = AppConfig.load()
 
         process_step1(cfg)
-        process_immutable_hosts(cfg)
 
         categories = extract_categorized_whitelists(cfg)
         if not categories:
