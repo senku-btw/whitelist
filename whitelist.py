@@ -52,7 +52,7 @@ SQL_GET_STANDARD_DOMAINS = """
     SELECT id, comment FROM domainlist
     WHERE comment IS NOT NULL AND comment != ''
     AND comment != 'Added from Query Log'
-    AND (comment NOT IN ('healthcheck', 'healtcheck', 'hosts') OR type (?, ?))
+    AND (comment NOT IN ('healthcheck', 'healtcheck', 'hosts') OR type IN (?, ?))
 """
 
 SQL_GET_CLIENT_BACKUPS = """
