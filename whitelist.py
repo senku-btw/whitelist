@@ -347,8 +347,7 @@ def ensure_special_domains_dual_group(
             for domain in SPECIAL_DOMAINS:
                 sanitized = sanitize_domain(domain)
                 cursor.execute(
-                    "SELECT id FROM domainlist "
-                    "WHERE domain = ? AND type = ?",
+                    "SELECT id FROM domainlist WHERE domain = ? AND type = ?",
                     (sanitized, DOMAIN_TYPE_EXACT),
                 )
                 row = cursor.fetchone()
@@ -364,9 +363,7 @@ def ensure_special_domains_dual_group(
                         "(domainlist_id, group_id) VALUES (?, ?)",
                         (domain_id, hc_gid),
                     )
-        logger.info(
-            "Enforced dual-group assignment for special healthcheck domains."
-        )
+        logger.info("Enforced dual-group assignment for special healthcheck domains.")
     except sqlite3.Error as exc:
         raise RuntimeError(
             f"Failed to assign dual groups for special domains: {exc}"
