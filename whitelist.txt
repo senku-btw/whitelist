@@ -10,6 +10,7 @@ akamaitechnologies.com
 amazonaws.com
 amzn.com
 amzn.to
+github.githubassets.com
 anchor.fm
 api-global.netflix.com
 api.adguard.com
