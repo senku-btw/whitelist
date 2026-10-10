@@ -18,7 +18,9 @@ DOMAIN_TYPE_REGEX = 2
 DOMAIN_TYPE_WILDCARD = 3
 ADLIST_TYPE = 1
 
-IMMUTABLE_CATEGORIES = frozenset({"healthcheck", "hosts"})
+# File-based immutable categories (healthcheck.txt is disabled)
+IMMUTABLE_CATEGORIES = frozenset({"hosts"})
+GROUP_IMMUTABLES = frozenset({"healthcheck", "hosts"})
 
 # --- SQL Queries ---
 SQL_GET_DEFAULT_ENTRIES = """
@@ -43,14 +45,14 @@ SQL_DELETE_DOMAINS = """
 SQL_GET_CATEGORIZED_DOMAINS = """
     SELECT domain, comment FROM domainlist
     WHERE type = ? AND comment IS NOT NULL AND comment != ''
-    AND comment NOT IN ('healthcheck', 'hosts', 'Added from Query Log')
+    AND comment NOT IN ('healthcheck', 'healtcheck', 'hosts', 'Added from Query Log')
 """
 
 SQL_GET_STANDARD_DOMAINS = """
     SELECT id, comment FROM domainlist
     WHERE comment IS NOT NULL AND comment != ''
     AND comment != 'Added from Query Log'
-    AND (comment NOT IN ('healthcheck', 'hosts') OR type IN (?, ?))
+    AND (comment NOT IN ('healthcheck', 'healtcheck', 'hosts') OR type (?, ?))
 """
 
 SQL_GET_CLIENT_BACKUPS = """
@@ -391,25 +393,6 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
         write_atomic(file_path, sorted(list(domains)))
 
 
-def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -> None:
-    """Exclusively assign domains/adlists matching comments to a group."""
-    if spec.group_id is None:
-        return
-    placeholders = " OR ".join(["comment = ?"] * len(spec.comments))
-    query = f"SELECT id FROM {spec.table} WHERE ({placeholders}) AND {spec.type_cond}"
-    cursor.execute(query, spec.comments)
-    ids = [row[0] for row in cursor.fetchall()]
-    if ids:
-        cursor.executemany(
-            f"DELETE FROM {spec.link_table} WHERE {spec.fk_col} = ?",
-            [(item_id,) for item_id in ids],
-        )
-        cursor.executemany(
-            f"INSERT INTO {spec.link_table} ({spec.fk_col}, group_id) VALUES (?, ?)",
-            [(item_id, spec.group_id) for item_id in ids],
-        )
-
-
 def _recreate_groups(
     cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
 ) -> Dict[str, int]:
@@ -429,7 +412,7 @@ def _recreate_groups(
     cursor.execute('DELETE FROM "group" WHERE id != ?', (DEFAULT_GROUP_ID,))
 
     sorted_categories = sorted(categories.keys())
-    for req_cat in IMMUTABLE_CATEGORIES:
+    for req_cat in GROUP_IMMUTABLES:
         if req_cat not in sorted_categories:
             sorted_categories.append(req_cat)
 
@@ -479,7 +462,7 @@ def _assign_regex_allow_groups(
 ) -> None:
     """
     Enforce exclusive group assignment for regex allow list (type 2).
-    If a comment specifies multiple groups (e.g. Default/hosts), assign them to all matches.
+    If a comment specifies multiple groups, assign them to all matches.
     If no match, no comment, or unassigned, strictly assign to the Default group.
     """
     cursor.execute(
@@ -518,13 +501,16 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
 
+            # Fix typos in comments ('healtcheck' -> 'healthcheck')
+            cursor.execute("UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
+            cursor.execute("UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
+
             cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
             client_backups = cursor.fetchall()
 
             group_map = _recreate_groups(cursor, categories)
 
             # Explicitly append the Default group to the mapping lookup
-            # so multi-assignments (e.g., 'Default/hosts') can resolve it natively.
             group_map["Default"] = DEFAULT_GROUP_ID
 
             _assign_standard_domains(cursor, group_map)
@@ -538,7 +524,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     table="domainlist",
                     link_table="domainlist_by_group",
                     fk_col="domainlist_id",
-                    comments=("healthcheck", "healtcheck"),
+                    comments=("healthcheck",),
                     group_id=hc_gid,
                     type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
                 ),
@@ -554,7 +540,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     table="adlist",
                     link_table="adlist_by_group",
                     fk_col="adlist_id",
-                    comments=("healthcheck", "healtcheck"),
+                    comments=("healthcheck",),
                     group_id=hc_gid,
                     type_cond=f"type = {ADLIST_TYPE}",
                 ),
@@ -599,34 +585,28 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
     query = "SELECT domain, comment FROM domainlist WHERE type = ?"
     rows = execute_read(cfg, query, (DOMAIN_TYPE_REGEX,))
 
-    # Dictionary mapping comments to a set of sanitized regex patterns
     regex_dict: Dict[str, Set[str]] = {}
 
     for domain, comment in rows:
-        # Sanitize pattern to avoid whitespace or invisible characters
         sanitized_pattern = "".join(
             char for char in domain if char.isprintable() and not char.isspace()
         )
 
-        # Determine the fallback group name if no comment exists
         safe_comment = comment.strip() if comment and comment.strip() else "Default"
 
         if safe_comment not in regex_dict:
             regex_dict[safe_comment] = set()
         regex_dict[safe_comment].add(sanitized_pattern)
 
-    # Format the file output: 'pattern -- comment' with an empty line between entries
     output_lines = []
     for comment_group, patterns in sorted(regex_dict.items()):
         for pattern in sorted(patterns):
             output_lines.append(f"{pattern} -- {comment_group}")
             output_lines.append("")
 
-    # Create the 'regex' directory if it doesn't exist
     regex_dir = cfg.repo_dir / "regex"
     regex_dir.mkdir(parents=True, exist_ok=True)
 
-    # Write output sequence to allowlist.txt, overwriting if present
     allowlist_path = regex_dir / "allowlist.txt"
     write_atomic(allowlist_path, output_lines)
     logger.info("Exported regex allowlist to %s", allowlist_path)
@@ -637,7 +617,6 @@ def push_to_github(cfg: AppConfig) -> None:
     if not (cfg.repo_dir / ".git").is_dir():
         raise RuntimeError(f"Not a valid Git repository: {cfg.repo_dir}")
 
-    # Track the newly created regex directory
     run_command(
         [
             "git",
@@ -668,8 +647,6 @@ def push_to_github(cfg: AppConfig) -> None:
     )
 
     try:
-        # Use start_new_session=True to cleanly detach the background process
-        # pylint: disable=consider-using-with
         subprocess.Popen(
             ["git", "push"],
             cwd=cfg.repo_dir,
@@ -717,7 +694,7 @@ def main() -> None:
         push_to_github(cfg)
         logger.info("Automation sequence completed successfully.")
 
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         logger.critical("FATAL ERROR: %s", exc, exc_info=True)
         sys.exit(1)
 
