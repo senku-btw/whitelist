@@ -10,7 +10,6 @@ m.youtube.com
 s.youtube.com
 s.ytimg.com
 s2.youtube.com
-securetoken.googleapis.com
 sponsor.ajay.app
 www.googleapis.com
 www.youtube-nocookie.com

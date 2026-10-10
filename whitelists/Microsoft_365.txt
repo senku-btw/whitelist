@@ -79,7 +79,6 @@ r3.res.office365.com
 r3.res.outlook.com
 r4.res.office365.com
 sfbassets.com
-sharepointonline.com
 skype.com
 skypeforbusiness.com
 skypemaprdsitus.trafficmanager.net
@@ -90,7 +89,6 @@ storage.live.com
 streaming.mediaservices.windows.net
 suite.office.net
 svc.ms
-teams.microsoft.com
 tenor.com
 urlp.sfbassets.com
 users.storage.live.com
