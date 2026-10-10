@@ -4,4 +4,5 @@ amzn.to
 cloudsync-prod.s3.amazonaws.com
 images-amazon.com
 s3.amazonaws.com
+unagi.amazon.it
 www.amazon.com

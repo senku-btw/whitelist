@@ -8,3 +8,4 @@ fls-na.amazon.com
 images-amazon.com
 msh.amazon.co.uk
 s3.amazonaws.com
+unagi.amazon.it
