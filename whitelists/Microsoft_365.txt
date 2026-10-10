@@ -69,6 +69,7 @@ passwordreset.microsoftonline.com
 portal.cloudappsecurity.com
 portal.office.com
 privatecdn.sharepointonline.com
+products.office.com
 protection.office.com
 protection.outlook.com
 provisioningapi.microsoftonline.com
