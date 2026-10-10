@@ -5,6 +5,7 @@
 2.android.pool.ntp.org
 addons.cdn.mozilla.net
 addons.mozilla.org
+assets.f-secure.com
 adguard.com
 akamaitechnologies.com
 amazonaws.com
