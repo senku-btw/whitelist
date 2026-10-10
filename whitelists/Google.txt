@@ -4,7 +4,6 @@ ajax.googleapis.com
 appsbackup-pa.clients6.google.com
 appsbackup-pa.googleapis.com
 c.pki.goog
-chrome.adtidy.org
 chromesyncentities-pa.googleapis.com
 chromesyncpasswords-pa.googleapis.com
 ci4.googleusercontent.com
@@ -28,7 +27,6 @@ clients8.google.com
 clients9.google.com
 cloud.google.com
 code.google.com
-connectivitycheck.gstatic.com
 console.cloud.google.com
 contacts.google.com
 developers.google.com

@@ -1,6 +1,8 @@
+chrome.adtidy.org
 chrome.com
 chrome.google.com
 chromestatus.com
 chromewhois.com
 chromium.org
+connectivitycheck.gstatic.com
 dl.google.com
