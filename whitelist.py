@@ -18,6 +18,8 @@ DOMAIN_TYPE_REGEX = 2
 DOMAIN_TYPE_WILDCARD = 3
 ADLIST_TYPE = 1
 
+SPECIAL_DOMAINS = ("primary.hole", "secondary.hole")
+
 # File-based immutable categories are disabled (healthcheck.txt and hosts.txt are removed)
 IMMUTABLE_CATEGORIES: FrozenSet[str] = frozenset()
 GROUP_IMMUTABLES = frozenset({"healthcheck", "hosts"})
@@ -283,6 +285,72 @@ def process_step1(cfg: AppConfig) -> None:
     logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
 
 
+def process_special_healthcheck_domains(cfg: AppConfig) -> None:
+    """Implement conditions (a) and (b) for primary.hole and secondary.hole."""
+    try:
+        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
+            conn.execute("PRAGMA foreign_keys = ON")
+            cursor = conn.cursor()
+            
+            for domain in SPECIAL_DOMAINS:
+                sanitized = sanitize_domain(domain)
+                cursor.execute(
+                    "SELECT id, comment FROM domainlist WHERE domain = ? AND type = ?",
+                    (sanitized, DOMAIN_TYPE_EXACT)
+                )
+                row = cursor.fetchone()
+                
+                if not row:
+                    cursor.execute(
+                        """INSERT INTO domainlist (type, domain, comment, enabled, date_added, date_modified) 
+                           VALUES (?, ?, ?, 1, strftime('%s','now'), strftime('%s','now'))""",
+                        (DOMAIN_TYPE_EXACT, sanitized, "healthcheck")
+                    )
+                    logger.info("Added missing special healthcheck domain: %s", sanitized)
+                else:
+                    domain_id, comment = row
+                    if comment != "healthcheck":
+                        cursor.execute(
+                            "UPDATE domainlist SET comment = 'healthcheck', date_modified = strftime('%s','now') WHERE id = ?",
+                            (domain_id,)
+                        )
+                        logger.info("Updated comment to 'healthcheck' for domain: %s", sanitized)
+                        
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Failed to process special healthcheck domains: {exc}") from exc
+
+
+def ensure_special_domains_dual_group(cfg: AppConfig, group_map: Dict[str, int]) -> None:
+    """Implement condition (c): Assign special domains to both Default and healthcheck groups."""
+    hc_gid = group_map.get("healthcheck")
+    if hc_gid is None:
+        return
+        
+    try:
+        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
+            cursor = conn.cursor()
+            for domain in SPECIAL_DOMAINS:
+                sanitized = sanitize_domain(domain)
+                cursor.execute(
+                    "SELECT id FROM domainlist WHERE domain = ? AND type = ?",
+                    (sanitized, DOMAIN_TYPE_EXACT)
+                )
+                row = cursor.fetchone()
+                if row:
+                    domain_id = row[0]
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
+                        (domain_id, DEFAULT_GROUP_ID)
+                    )
+                    cursor.execute(
+                        "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
+                        (domain_id, hc_gid)
+                    )
+        logger.info("Enforced dual-group assignment for special healthcheck domains.")
+    except sqlite3.Error as exc:
+        raise RuntimeError(f"Failed to assign dual groups for special domains: {exc}") from exc
+
+
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
     """Parse DB and cluster domains into categories, ignoring immutables."""
     rows = execute_read(cfg, SQL_GET_CATEGORIZED_DOMAINS, (DOMAIN_TYPE_EXACT,))
@@ -526,6 +594,8 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                     client_group_links,
                 )
 
+        ensure_special_domains_dual_group(cfg, group_map)
+
         logger.info(
             "Steps 2 & 3 Complete: Successfully rebuilt %d database groups.",
             len(categories),
@@ -554,7 +624,6 @@ def export_regex_allowlist(cfg: AppConfig) -> None:  # pylint: disable=too-many-
         tag_match = any(t.lower() in ("healthcheck", "hosts") for t in tags)
         group_match = group_name and group_name.lower() in ("healthcheck", "hosts")
 
-        # Skip/exclude rules that belong to healthcheck or hosts
         if tag_match or group_match:
             continue
 
@@ -647,6 +716,7 @@ def main() -> None:
         cfg = AppConfig.load()
 
         process_step1(cfg)
+        process_special_healthcheck_domains(cfg)
 
         categories = extract_categorized_whitelists(cfg)
         if not categories:
