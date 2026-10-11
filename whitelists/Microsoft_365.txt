@@ -27,7 +27,6 @@ client-office365-tas.msedge.net
 client-s.gateway.messenger.live.com
 clientconfig.microsoftonline-p.net
 clientconfig.passport.net
-clo.footprintdns.com
 companymanager.microsoftonline.com
 compass-ssl.microsoft.com
 config.edge.skype.com
@@ -82,7 +81,6 @@ nexus.microsoftonline-p.com
 nexusrules.officeapps.live.com
 notification.api.microsoftstream.com
 notify.xboxlive.com
-nrb.footprintdns.com
 o365filtering.com
 office.com
 office.de

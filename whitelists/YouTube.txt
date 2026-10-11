@@ -32,7 +32,6 @@ youtube-nocookie.com
 youtube-ui.l.google.com
 youtube.com
 youtube.googleapis.com
-youtube.l.google.com
 youtubei.googleapis.com
 yt.moatads.com
 yt3.ggpht.com

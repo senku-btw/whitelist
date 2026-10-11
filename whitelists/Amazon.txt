@@ -10,11 +10,7 @@ atv-ext-eu.amazon.com
 atv-ext-fe.amazon.com
 atv-ext.amazon.com
 atv-ps.amazon.com
-cloudsync-prod.s3.amazonaws.com
 fls-eu.amazon.de
-images-amazon.com
 primevideo.com
 pv-cdn.net
-s3.amazonaws.com
-unagi.amazon.it
 www.amazon.com
