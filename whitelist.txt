@@ -2,7 +2,6 @@
 0.wikipedia.com
 1password.com
 1password.eu
-2.android.pool.ntp.org
 79423.analytics.edgekey.net
 addons.cdn.mozilla.net
 addons.mozilla.org
@@ -367,10 +366,6 @@ thetvdb.com
 thumbs.ebaystatic.com
 thumbs1.ebaystatic.com
 tiles.services.mozilla.com
-time.apple.com
-time.cloudflare.com
-time.google.com
-time.windows.com
 tinyurl.com
 traffic.libsyn.com
 ubuntu.com
