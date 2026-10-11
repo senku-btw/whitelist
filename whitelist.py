@@ -453,20 +453,16 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
 
             # Fix typos in comments ('healtcheck' -> 'healthcheck', 'host' -> 'hosts')
             cursor.execute(
-                "UPDATE domainlist SET comment = 'healthcheck' "
-                "WHERE comment = 'healtcheck'"
+                "UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'"
             )
             cursor.execute(
-                "UPDATE adlist SET comment = 'healthcheck' "
-                "WHERE comment = 'healtcheck'"
+                "UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'"
             )
             cursor.execute(
-                "UPDATE domainlist SET comment = 'hosts' "
-                "WHERE comment = 'host'"
+                "UPDATE domainlist SET comment = 'hosts' WHERE comment = 'host'"
             )
             cursor.execute(
-                "UPDATE adlist SET comment = 'hosts' "
-                "WHERE comment = 'host'"
+                "UPDATE adlist SET comment = 'hosts' WHERE comment = 'host'"
             )
 
             cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
