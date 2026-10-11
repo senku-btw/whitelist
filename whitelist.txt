@@ -2,7 +2,6 @@
 0.wikipedia.com
 1password.com
 1password.eu
-79423.analytics.edgekey.net
 addons.cdn.mozilla.net
 addons.mozilla.org
 adguard.com
@@ -214,7 +213,6 @@ imgix.net
 intel.com
 intel.com.au
 it.wikipedia.com
-jboss.org
 jp.wikipedia.com
 jquery.com
 jsdelivr.net
