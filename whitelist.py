@@ -45,14 +45,14 @@ SQL_DELETE_DOMAINS = """
 SQL_GET_CATEGORIZED_DOMAINS = """
     SELECT domain, comment FROM domainlist
     WHERE type = ? AND comment IS NOT NULL AND comment != ''
-    AND comment NOT IN ('healthcheck', 'healtcheck', 'hosts', 'Added from Query Log')
+    AND comment NOT IN ('healthcheck', 'healtcheck', 'hosts', 'host', 'Added from Query Log')
 """
 
 SQL_GET_STANDARD_DOMAINS = """
     SELECT id, comment FROM domainlist
     WHERE comment IS NOT NULL AND comment != ''
     AND comment != 'Added from Query Log'
-    AND (comment NOT IN ('healthcheck', 'healtcheck', 'hosts') OR type IN (?, ?))
+    AND (comment NOT IN ('healthcheck', 'healtcheck', 'hosts', 'host') OR type IN (?, ?))
 """
 
 SQL_GET_CLIENT_BACKUPS = """
@@ -451,7 +451,7 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
 
-            # Fix typos in comments ('healtcheck' -> 'healthcheck')
+            # Fix typos in comments ('healtcheck' -> 'healthcheck', 'host' -> 'hosts')
             cursor.execute(
                 "UPDATE domainlist SET comment = 'healthcheck' "
                 "WHERE comment = 'healtcheck'"
@@ -459,6 +459,14 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             cursor.execute(
                 "UPDATE adlist SET comment = 'healthcheck' "
                 "WHERE comment = 'healtcheck'"
+            )
+            cursor.execute(
+                "UPDATE domainlist SET comment = 'hosts' "
+                "WHERE comment = 'host'"
+            )
+            cursor.execute(
+                "UPDATE adlist SET comment = 'hosts' "
+                "WHERE comment = 'host'"
             )
 
             cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
