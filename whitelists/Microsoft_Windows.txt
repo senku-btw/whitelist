@@ -14,6 +14,7 @@ login.microsoftonline.com
 msedge.api.cdp.microsoft.com
 msftncsi.com
 officeclient.microsoft.com
+ov-df.microsoft.com
 settings-win.data.microsoft.com
 settings.data.microsoft.com
 smartscreen-prod.microsoft.com

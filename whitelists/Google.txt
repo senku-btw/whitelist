@@ -72,6 +72,7 @@ redirector.gvt2.com
 script.google.com
 securetoken.googleapis.com
 security.google.com
+sites.google.com
 storage.googleapis.com
 t1.gstatic.com
 talk.l.google.com
@@ -82,4 +83,5 @@ update.googleapis.com
 video.google.com
 webcache.googleusercontent.com
 www.google.com
+www.gstatic.com
 youtube.l.google.com
