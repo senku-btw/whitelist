@@ -18,9 +18,12 @@ DOMAIN_TYPE_REGEX = 2
 DOMAIN_TYPE_WILDCARD = 3
 ADLIST_TYPE = 1
 
-# File-based immutable categories are disabled (healthcheck.txt and hosts.txt are removed)
 IMMUTABLE_CATEGORIES: FrozenSet[str] = frozenset()
 GROUP_IMMUTABLES = frozenset({"healthcheck", "hosts"})
+
+# Strict allowlists for SQL identifiers to prevent injection via formatting
+ALLOWED_TABLES = frozenset({"domainlist", "domainlist_by_group", "adlist", "adlist_by_group", "group"})
+ALLOWED_COLUMNS = frozenset({"id", "domainlist_id", "adlist_id", "group_id", "domain", "type", "comment"})
 
 # --- SQL Queries ---
 SQL_GET_DEFAULT_ENTRIES = """
@@ -31,15 +34,6 @@ SQL_GET_DEFAULT_ENTRIES = """
     WHERE d.type = ?
     AND (d.comment IS NULL OR d.comment = '')
     AND g.name = 'Default'
-"""
-
-SQL_DELETE_LINKS = """
-    DELETE FROM {table} WHERE {fk_col} IN
-    (SELECT id FROM {base_table} WHERE domain = ? AND type = ? {extra_cond})
-"""
-
-SQL_DELETE_DOMAINS = """
-    DELETE FROM {base_table} WHERE domain = ? AND type = ? {extra_cond}
 """
 
 SQL_GET_CATEGORIZED_DOMAINS = """
@@ -65,14 +59,14 @@ SQL_GET_CLIENT_BACKUPS = """
 # --- Production Logging Setup ---
 logger = logging.getLogger("PiholeWhitelistManager")
 logger.setLevel(logging.INFO)
-HANDLER = logging.StreamHandler(sys.stdout)
-FORMATTER = logging.Formatter(
-    "%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
-)
-HANDLER.setFormatter(FORMATTER)
 if not logger.handlers:
-    logger.addHandler(HANDLER)
+    handler = logging.StreamHandler(sys.stdout)
+    formatter = logging.Formatter(
+        "%(asctime)s - %(levelname)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+    )
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
 
 
 # --- Configuration ---
@@ -89,15 +83,12 @@ class AppConfig:
 
     @classmethod
     def load(cls) -> "AppConfig":
-        """Load configuration from environment variables and check paths."""
+        """Load configuration from environment variables and check paths securely."""
         default_db_path = os.getenv(
             "PIHOLE_DB_PATH",
-            (
-                "/mnt/dietpi_userdata/docker/primary-stack/"
-                "pihole/etc-pihole/gravity.db"
-            ),
+            "/mnt/dietpi_userdata/docker/primary-stack/pihole/etc-pihole/gravity.db",
         )
-        db_path = Path(default_db_path)
+        db_path = Path(default_db_path).resolve()
         repo_dir = Path(__file__).resolve().parent
 
         if not db_path.is_file():
@@ -124,33 +115,50 @@ class GroupAssignmentSpec:
     group_id: Optional[int]
     type_cond: str
 
+    def __post_init__(self) -> None:
+        """Validate SQL identifiers to ensure secure execution."""
+        if self.table not in ALLOWED_TABLES or self.link_table not in ALLOWED_TABLES:
+            raise ValueError(f"Unauthorized table name in spec: {self.table}, {self.link_table}")
+        if self.fk_col not in ALLOWED_COLUMNS:
+            raise ValueError(f"Unauthorized column name in spec: {self.fk_col}")
+
 
 # --- Core Utilities ---
 
-
 def sanitize_domain(domain: str) -> str:
-    """Sanitize and normalize a domain string."""
+    """Sanitize and normalize a domain string securely."""
     if not isinstance(domain, str):
         raise TypeError(f"Expected string for domain, got {type(domain).__name__}")
-    return domain.strip().lower()
+    cleaned = domain.strip().lower()
+    if not re.match(r"^[a-z0-9_.-]+$", cleaned):
+        raise ValueError(f"Invalid characters detected in domain: {cleaned}")
+    return cleaned
 
 
 def parse_comment_categories(comment: Optional[str]) -> List[str]:
-    """Parse categories out of a domain comment string, splitting by slashes."""
+    """Parse categories out of a domain comment string safely."""
     if not comment or not isinstance(comment, str):
         return []
     cleaned_comment = re.sub(r"\{.*?\}", "", comment)
     return [c.strip() for c in cleaned_comment.split("/") if c.strip()]
 
 
-def format_filename(category: str) -> str:
-    """Format category name into a safe filename."""
+def format_filename(category: str, base_dir: Path) -> Path:
+    """Format category name into a safe filename protected against path traversal."""
     if not category:
         raise ValueError("Category name cannot be empty")
-    safe_chars = "".join(
-        c for c in category if c.isalnum() or c in (" ", "_", "-")
-    ).strip()
-    return re.sub(r"\s+", "_", safe_chars)
+    safe_chars = "".join(c for c in category if c.isalnum() or c in (" ", "_", "-")).strip()
+    safe_name = re.sub(r"\s+", "_", safe_chars) + ".txt"
+    
+    target_path = (base_dir / safe_name).resolve()
+    if not target_path.is_relative_to(base_dir.resolve()):
+        raise SecurityError(f"Path traversal attempt detected: {category}")
+    return target_path
+
+
+class SecurityError(Exception):
+    """Raised when a security constraint or boundary is violated."""
+    pass
 
 
 def run_command(
@@ -159,7 +167,7 @@ def run_command(
     capture_output: bool = True,
     timeout: int = 30,
 ) -> subprocess.CompletedProcess:
-    """Execute a system command securely with timeouts."""
+    """Execute a system command securely with strict timeouts."""
     try:
         return subprocess.run(
             cmd,
@@ -179,7 +187,7 @@ def run_command(
 
 
 def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
-    """Write data to a temp file and replace target atomically."""
+    """Write data to a temp file and replace target atomically with correct permissions."""
     filepath.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = None
     try:
@@ -205,9 +213,8 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
 
 # --- Database Interactions ---
 
-
 def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
-    """Execute a read-only SQL query against the Pi-hole database."""
+    """Execute a read-only SQL query against the Pi-hole database safely."""
     try:
         db_uri = f"file:{cfg.db_path}?mode=ro"
         with sqlite3.connect(db_uri, uri=True, timeout=cfg.db_timeout) as conn:
@@ -225,12 +232,13 @@ def execute_deletions(
     params: List[Tuple[str, int]],
     err_context: str,
 ) -> None:
-    """Execute domain and link deletion queries within a transaction."""
+    """Execute domain and link deletion queries within a secure transaction."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             cursor = conn.cursor()
-            cursor.executemany(delete_links_sql, params)
-            cursor.executemany(delete_domains_sql, params)
+            with conn:
+                cursor.executemany(delete_links_sql, params)
+                cursor.executemany(delete_domains_sql, params)
     except sqlite3.Error as exc:
         raise RuntimeError(
             f"Database deletion transaction for {err_context} failed: {exc}"
@@ -239,9 +247,8 @@ def execute_deletions(
 
 # --- Business Logic ---
 
-
 def process_step1(cfg: AppConfig) -> None:
-    """Merge default DB entries into whitelist.txt and remove them from DB."""
+    """Merge default DB entries into whitelist.txt and remove them from DB securely."""
     db_entries_raw = execute_read(cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
@@ -264,14 +271,12 @@ def process_step1(cfg: AppConfig) -> None:
 
     params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
 
-    delete_links = SQL_DELETE_LINKS.format(
-        table="domainlist_by_group",
-        fk_col="domainlist_id",
-        base_table="domainlist",
-        extra_cond="",
+    delete_links = (
+        "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
+        "(SELECT id FROM domainlist WHERE domain = ? AND type = ?)"
     )
-    delete_domains = SQL_DELETE_DOMAINS.format(
-        base_table="domainlist", extra_cond="AND (comment IS NULL OR comment = '')"
+    delete_domains = (
+        "DELETE FROM domainlist WHERE domain = ? AND type = ? AND (comment IS NULL OR comment = '')"
     )
 
     execute_deletions(cfg, delete_links, delete_domains, params, "step 1")
@@ -284,7 +289,7 @@ def process_step1(cfg: AppConfig) -> None:
 
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
-    """Parse DB and cluster domains into categories, ignoring immutables."""
+    """Parse DB and cluster domains into categories securely."""
     rows = execute_read(cfg, SQL_GET_CATEGORIZED_DOMAINS, (DOMAIN_TYPE_EXACT,))
 
     temp_dict: Dict[str, Set[str]] = {}
@@ -294,17 +299,15 @@ def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
         for cat in categories:
             temp_dict.setdefault(cat, set()).add(sanitized_dom)
 
-    categories_result = {
+    return {
         cat: frozenset(domains)
         for cat, domains in temp_dict.items()
         if len(domains) >= 2 or cat.lower() in IMMUTABLE_CATEGORIES
     }
 
-    return categories_result
-
 
 def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Write generated categories to physical category files."""
+    """Write generated categories to physical category files with path protection."""
     cfg.whitelists_dir.mkdir(parents=True, exist_ok=True, mode=0o755)
 
     for existing_file in cfg.whitelists_dir.glob("*.txt"):
@@ -314,18 +317,14 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
     for category, domains in categories.items():
         if category.lower() in IMMUTABLE_CATEGORIES:
-            logger.info(
-                "Skipping write/overwrite for immutable file: %s.txt",
-                category.lower(),
-            )
+            logger.info("Skipping write/overwrite for immutable file: %s.txt", category.lower())
             continue
-        safe_filename = format_filename(category)
-        file_path = cfg.whitelists_dir / f"{safe_filename}.txt"
+        file_path = format_filename(category, cfg.whitelists_dir)
         write_atomic(file_path, sorted(list(domains)))
 
 
 def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -> None:
-    """Exclusively assign domains/adlists matching comments to a group."""
+    """Exclusively assign domains/adlists matching comments to a group securely."""
     if spec.group_id is None:
         return
     placeholders = " OR ".join(["comment = ?"] * len(spec.comments))
@@ -346,19 +345,13 @@ def _assign_exclusive_group(cursor: sqlite3.Cursor, spec: GroupAssignmentSpec) -
 def _recreate_groups(
     cursor: sqlite3.Cursor, categories: Dict[str, FrozenSet[str]]
 ) -> Dict[str, int]:
-    """Rebuild non-default group definitions and return group map."""
+    """Rebuild non-default group definitions safely and return group map."""
     cursor.execute('SELECT id FROM "group" WHERE id = ?', (DEFAULT_GROUP_ID,))
     if cursor.fetchone() is None:
-        raise RuntimeError(
-            f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing."
-        )
+        raise RuntimeError(f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing.")
 
-    cursor.execute(
-        "DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,)
-    )
-    cursor.execute(
-        "DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,)
-    )
+    cursor.execute("DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
+    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
     cursor.execute('DELETE FROM "group" WHERE id != ?', (DEFAULT_GROUP_ID,))
 
     sorted_categories = sorted(categories.keys())
@@ -401,23 +394,14 @@ def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) 
 
     if domain_group_links:
         cursor.executemany(
-            "INSERT OR IGNORE INTO domainlist_by_group "
-            "(domainlist_id, group_id) VALUES (?, ?)",
+            "INSERT OR IGNORE INTO domainlist_by_group (domainlist_id, group_id) VALUES (?, ?)",
             domain_group_links,
         )
 
 
-def _assign_regex_allow_groups(
-    cursor: sqlite3.Cursor, group_map: Dict[str, int]
-) -> None:
-    """
-    Enforce exclusive group assignment for regex allow list (type 2).
-    If a comment specifies multiple groups, assign them to all matches.
-    If no match, no comment, or unassigned, strictly assign to the Default group.
-    """
-    cursor.execute(
-        "SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,)
-    )
+def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
+    """Enforce exclusive group assignment for regex allow lists securely."""
+    cursor.execute("SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,))
     regex_entries = cursor.fetchall()
 
     for d_id, comment in regex_entries:
@@ -428,9 +412,7 @@ def _assign_regex_allow_groups(
                 if tag in group_map:
                     matched_gids.add(group_map[tag])
 
-        cursor.execute(
-            "DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,)
-        )
+        cursor.execute("DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,))
 
         if matched_gids:
             cursor.executemany(
@@ -445,101 +427,87 @@ def _assign_regex_allow_groups(
 
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
-    """Rebuild Pi-hole DB groups safely preserving client associations."""
+    """Rebuild Pi-hole DB groups safely within an atomic transaction."""
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
+            
+            with conn:
+                cursor.execute("UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
+                cursor.execute("UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
+                cursor.execute("UPDATE domainlist SET comment = 'hosts' WHERE comment = 'host'")
+                cursor.execute("UPDATE adlist SET comment = 'hosts' WHERE comment = 'host'")
 
-            # Fix typos in comments ('healtcheck' -> 'healthcheck', 'host' -> 'hosts')
-            cursor.execute(
-                "UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'"
-            )
-            cursor.execute(
-                "UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'"
-            )
-            cursor.execute(
-                "UPDATE domainlist SET comment = 'hosts' WHERE comment = 'host'"
-            )
-            cursor.execute("UPDATE adlist SET comment = 'hosts' WHERE comment = 'host'")
+                cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
+                client_backups = cursor.fetchall()
 
-            cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
-            client_backups = cursor.fetchall()
+                group_map = _recreate_groups(cursor, categories)
+                group_map["Default"] = DEFAULT_GROUP_ID
 
-            group_map = _recreate_groups(cursor, categories)
+                _assign_standard_domains(cursor, group_map)
+                _assign_regex_allow_groups(cursor, group_map)
 
-            # Explicitly append the Default group to the mapping lookup
-            group_map["Default"] = DEFAULT_GROUP_ID
+                hc_gid = group_map.get("healthcheck")
+                hosts_gid = group_map.get("hosts")
 
-            _assign_standard_domains(cursor, group_map)
-            _assign_regex_allow_groups(cursor, group_map)
+                specs = [
+                    GroupAssignmentSpec(
+                        table="domainlist",
+                        link_table="domainlist_by_group",
+                        fk_col="domainlist_id",
+                        comments=("healthcheck",),
+                        group_id=hc_gid,
+                        type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
+                    ),
+                    GroupAssignmentSpec(
+                        table="domainlist",
+                        link_table="domainlist_by_group",
+                        fk_col="domainlist_id",
+                        comments=("hosts",),
+                        group_id=hosts_gid,
+                        type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
+                    ),
+                    GroupAssignmentSpec(
+                        table="adlist",
+                        link_table="adlist_by_group",
+                        fk_col="adlist_id",
+                        comments=("healthcheck",),
+                        group_id=hc_gid,
+                        type_cond=f"type = {ADLIST_TYPE}",
+                    ),
+                    GroupAssignmentSpec(
+                        table="adlist",
+                        link_table="adlist_by_group",
+                        fk_col="adlist_id",
+                        comments=("hosts",),
+                        group_id=hosts_gid,
+                        type_cond=f"type = {ADLIST_TYPE}",
+                    ),
+                ]
 
-            hc_gid = group_map.get("healthcheck")
-            hosts_gid = group_map.get("hosts")
+                for spec in specs:
+                    _assign_exclusive_group(cursor, spec)
 
-            specs = [
-                GroupAssignmentSpec(
-                    table="domainlist",
-                    link_table="domainlist_by_group",
-                    fk_col="domainlist_id",
-                    comments=("healthcheck",),
-                    group_id=hc_gid,
-                    type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
-                ),
-                GroupAssignmentSpec(
-                    table="domainlist",
-                    link_table="domainlist_by_group",
-                    fk_col="domainlist_id",
-                    comments=("hosts",),
-                    group_id=hosts_gid,
-                    type_cond=f"type IN ({DOMAIN_TYPE_EXACT}, {DOMAIN_TYPE_REGEX})",
-                ),
-                GroupAssignmentSpec(
-                    table="adlist",
-                    link_table="adlist_by_group",
-                    fk_col="adlist_id",
-                    comments=("healthcheck",),
-                    group_id=hc_gid,
-                    type_cond=f"type = {ADLIST_TYPE}",
-                ),
-                GroupAssignmentSpec(
-                    table="adlist",
-                    link_table="adlist_by_group",
-                    fk_col="adlist_id",
-                    comments=("hosts",),
-                    group_id=hosts_gid,
-                    type_cond=f"type = {ADLIST_TYPE}",
-                ),
-            ]
+                client_group_links = [
+                    (client_id, group_map[group_name])
+                    for client_id, group_name in client_backups
+                    if group_name in group_map
+                ]
 
-            for spec in specs:
-                _assign_exclusive_group(cursor, spec)
+                if client_group_links:
+                    cursor.executemany(
+                        "INSERT OR IGNORE INTO client_by_group (client_id, group_id) VALUES (?, ?)",
+                        client_group_links,
+                    )
 
-            client_group_links = [
-                (client_id, group_map[group_name])
-                for client_id, group_name in client_backups
-                if group_name in group_map
-            ]
-
-            if client_group_links:
-                cursor.executemany(
-                    "INSERT OR IGNORE INTO client_by_group "
-                    "(client_id, group_id) VALUES (?, ?)",
-                    client_group_links,
-                )
-
-        logger.info(
-            "Steps 2 & 3 Complete: Successfully rebuilt %d database groups.",
-            len(categories),
-        )
+        logger.info("Steps 2 & 3 Complete: Successfully rebuilt %d database groups.", len(categories))
     except sqlite3.Error as exc:
-        raise RuntimeError(
-            f"Database transaction failed during group rebuild: {exc}"
-        ) from exc
+        raise RuntimeError(f"Database transaction failed during group rebuild: {exc}") from exc
 
 
-def export_regex_allowlist(cfg: AppConfig) -> None:  # pylint: disable=too-many-locals
-    """Export regex allow entries excluding healthcheck/hosts group or comment."""
+def export_regex_allowlist(cfg: AppConfig) -> None:
+    """Export regex allow entries securely, filtering sensitive groups."""
     query = """
         SELECT DISTINCT d.domain, d.comment, g.name
         FROM domainlist d
@@ -548,7 +516,6 @@ def export_regex_allowlist(cfg: AppConfig) -> None:  # pylint: disable=too-many-
         WHERE d.type = ?
     """
     rows = execute_read(cfg, query, (DOMAIN_TYPE_REGEX,))
-
     regex_dict: Dict[str, Set[str]] = {}
 
     for domain, comment, group_name in rows:
@@ -559,36 +526,30 @@ def export_regex_allowlist(cfg: AppConfig) -> None:  # pylint: disable=too-many-
         if tag_match or group_match:
             continue
 
-        sanitized_pattern = "".join(
-            char for char in domain if char.isprintable() and not char.isspace()
-        )
-
+        sanitized_pattern = "".join(char for char in domain if char.isprintable() and not char.isspace())
         safe_comment = comment.strip() if comment and comment.strip() else "Default"
 
-        if safe_comment not in regex_dict:
-            regex_dict[safe_comment] = set()
-        regex_dict[safe_comment].add(sanitized_pattern)
+        regex_dict.setdefault(safe_comment, set()).add(sanitized_pattern)
 
     output_lines = []
     for comment_group, patterns in sorted(regex_dict.items()):
         for pattern in sorted(patterns):
-            output_lines.append(f"{pattern} -- {comment_group}")
-            output_lines.append("")
+            output_lines.extend([f"{pattern} -- {comment_group}", ""])
 
-    regex_dir = cfg.repo_dir / "regex"
+    regex_dir = (cfg.repo_dir / "regex").resolve()
+    if not regex_dir.is_relative_to(cfg.repo_dir.resolve()):
+        raise SecurityError("Invalid regex export directory path.")
+    
     regex_dir.mkdir(parents=True, exist_ok=True)
-
     allowlist_path = regex_dir / "allowlist.txt"
     write_atomic(allowlist_path, output_lines)
-    logger.info(
-        "Exported filtered regex allowlist (excluding healthcheck/hosts) to %s",
-        allowlist_path,
-    )
+    logger.info("Exported filtered regex allowlist to %s", allowlist_path)
 
 
 def push_to_github(cfg: AppConfig) -> None:
-    """Commit changes and push infrastructure changes to origin."""
-    if not (cfg.repo_dir / ".git").is_dir():
+    """Commit and push configuration changes safely."""
+    git_dir = (cfg.repo_dir / ".git").resolve()
+    if not git_dir.is_dir():
         raise RuntimeError(f"Not a valid Git repository: {cfg.repo_dir}")
 
     run_command(
@@ -621,28 +582,24 @@ def push_to_github(cfg: AppConfig) -> None:
     )
 
     try:
-        with subprocess.Popen(
+        subprocess.run(
             ["git", "push"],
             cwd=cfg.repo_dir,
+            check=True,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        ) as _:
-            pass
-        logger.info(
-            "Step 4 Complete: Commit '%s' created and push dispatched.",
-            commit_msg,
+            timeout=cfg.subprocess_timeout,
         )
-    except Exception as exc:  # pylint: disable=broad-exception-caught
-        logger.error("Failed to start background git push: %s", exc, exc_info=True)
-        raise RuntimeError(f"Background push failed: {exc}") from exc
+        logger.info("Step 4 Complete: Commit '%s' pushed successfully.", commit_msg)
+    except Exception as exc:
+        logger.error("Failed to execute git push: %s", exc, exc_info=True)
+        raise RuntimeError(f"Git push failed: {exc}") from exc
 
 
 # --- Main Execution Control ---
 
-
 def main() -> None:
-    """Run the primary Pi-hole whitelist automation routine."""
+    """Run the primary Pi-hole whitelist automation routine securely."""
     logger.info("Initializing Pi-hole Whitelist Automation...")
     try:
         cfg = AppConfig.load()
@@ -668,7 +625,7 @@ def main() -> None:
         push_to_github(cfg)
         logger.info("Automation sequence completed successfully.")
 
-    except Exception as exc:  # pylint: disable=broad-exception-caught
+    except Exception as exc:
         logger.critical("FATAL ERROR: %s", exc, exc_info=True)
         sys.exit(1)
 
