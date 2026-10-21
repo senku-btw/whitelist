@@ -237,56 +237,34 @@ def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
 # --- Business Logic ---
 
 
-def process_step1(cfg: AppConfig) -> None:
-    """Extract default DB entries, update whitelist.txt, and purge all whitelist.txt entries from the database."""
-    db_entries_raw = execute_read(cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,))
-    db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
+def _purge_whitelist_entries(cfg: AppConfig, entries: List[str]) -> int:
+    """Purge matching whitelist entries from the database securely."""
+    if not entries:
+        return 0
 
-    txt_entries: Set[str] = set()
-    if cfg.whitelist_txt_path.exists():
-        try:
-            with open(cfg.whitelist_txt_path, "r", encoding="utf-8") as file_obj:
-                txt_entries = {
-                    sanitize_domain(line) for line in file_obj if line.strip()
-                }
-        except IOError as exc:
-            raise RuntimeError(f"Failed to read existing whitelist.txt: {exc}") from exc
-
-    combined_entries = sorted(list(db_entries | txt_entries))
-    write_atomic(cfg.whitelist_txt_path, combined_entries)
-
-    logger.info(
-        "Step 1 Complete: Extracted %d default DB entries and updated whitelist.txt (Total: %d entries).",
-        len(db_entries),
-        len(combined_entries),
-    )
-
-    if not combined_entries:
-        logger.info("Whitelist.txt is empty. No database purging needed.")
-        return
-
+    total_deleted = 0
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
             with conn:
                 batch_size = 500
-                total_deleted = 0
-                for i in range(0, len(combined_entries), batch_size):
-                    batch = combined_entries[i : i + batch_size]
+                for i in range(0, len(entries), batch_size):
+                    batch = entries[i : i + batch_size]
                     placeholders = ",".join(["?"] * len(batch))
 
-                    query_ids = f"""
-                        SELECT id FROM domainlist 
-                        WHERE type = ? AND domain IN ({placeholders})
-                    """
+                    query_ids = (
+                        "SELECT id FROM domainlist "
+                        f"WHERE type = ? AND domain IN ({placeholders})"
+                    )
                     cursor.execute(query_ids, (DOMAIN_TYPE_EXACT, *batch))
                     ids_to_delete = [row[0] for row in cursor.fetchall()]
 
                     if ids_to_delete:
                         id_placeholders = ",".join(["?"] * len(ids_to_delete))
                         cursor.execute(
-                            f"DELETE FROM domainlist_by_group WHERE domainlist_id IN ({id_placeholders})",
+                            "DELETE FROM domainlist_by_group "
+                            f"WHERE domainlist_id IN ({id_placeholders})",
                             ids_to_delete,
                         )
                         cursor.execute(
@@ -294,15 +272,58 @@ def process_step1(cfg: AppConfig) -> None:
                             ids_to_delete,
                         )
                         total_deleted += len(ids_to_delete)
-
-        logger.info(
-            "Database Purge Complete: Removed %d exact matching whitelist entries from the database.",
-            total_deleted,
-        )
+        return total_deleted
     except sqlite3.Error as exc:
         raise RuntimeError(
             f"Database transaction failed during whitelist purge: {exc}"
         ) from exc
+
+
+def process_step1(cfg: AppConfig) -> None:
+    """Extract default DB entries, update whitelist.txt,
+
+    and purge all whitelist.txt entries from the database.
+    """
+    db_entries_raw = execute_read(
+        cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,)
+    )
+    db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
+
+    txt_entries: Set[str] = set()
+    if cfg.whitelist_txt_path.exists():
+        try:
+            with open(
+                cfg.whitelist_txt_path, "r", encoding="utf-8"
+            ) as file_obj:
+                txt_entries = {
+                    sanitize_domain(line)
+                    for line in file_obj
+                    if line.strip()
+                }
+        except IOError as exc:
+            raise RuntimeError(
+                f"Failed to read existing whitelist.txt: {exc}"
+            ) from exc
+
+    combined_entries = sorted(list(db_entries | txt_entries))
+    write_atomic(cfg.whitelist_txt_path, combined_entries)
+
+    logger.info(
+        "Step 1 Complete: Extracted %d default DB entries and "
+        "updated whitelist.txt (Total: %d entries).",
+        len(db_entries),
+        len(combined_entries),
+    )
+
+    total_deleted = _purge_whitelist_entries(cfg, combined_entries)
+    if total_deleted > 0:
+        logger.info(
+            "Database Purge Complete: Removed %d exact matching "
+            "whitelist entries from the database.",
+            total_deleted,
+        )
+    else:
+        logger.info("No matching whitelist entries found to purge.")
 
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
