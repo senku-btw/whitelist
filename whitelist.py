@@ -225,35 +225,15 @@ def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
         raise RuntimeError(f"Database read failure: {exc}") from exc
 
 
-def execute_deletions(
-    cfg: AppConfig,
-    delete_links_sql: str,
-    delete_domains_sql: str,
-    params: List[Tuple[str, int]],
-    err_context: str,
-) -> None:
-    """Execute domain and link deletion queries within a secure transaction."""
-    try:
-        with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
-            cursor = conn.cursor()
-            with conn:
-                cursor.executemany(delete_links_sql, params)
-                cursor.executemany(delete_domains_sql, params)
-    except sqlite3.Error as exc:
-        raise RuntimeError(
-            f"Database deletion transaction for {err_context} failed: {exc}"
-        ) from exc
-
-
 # --- Business Logic ---
 
 def process_step1(cfg: AppConfig) -> None:
-    """Merge default DB entries into whitelist.txt and remove them from DB securely."""
+    """Copy default DB entries into whitelist.txt without removing them from the database."""
     db_entries_raw = execute_read(cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
     if not db_entries:
-        logger.info("Step 1 Complete: No default DB entries require merging.")
+        logger.info("Step 1 Complete: No default DB entries require copying.")
         return
 
     txt_entries: FrozenSet[str] = frozenset()
@@ -269,23 +249,7 @@ def process_step1(cfg: AppConfig) -> None:
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
 
-    params = [(e, DOMAIN_TYPE_EXACT) for e in db_entries]
-
-    delete_links = (
-        "DELETE FROM domainlist_by_group WHERE domainlist_id IN "
-        "(SELECT id FROM domainlist WHERE domain = ? AND type = ?)"
-    )
-    delete_domains = (
-        "DELETE FROM domainlist WHERE domain = ? AND type = ? AND (comment IS NULL OR comment = '')"
-    )
-
-    execute_deletions(cfg, delete_links, delete_domains, params, "step 1")
-
-    run_command(
-        ["docker", "exec", "pihole", "pihole", "reloadlists"],
-        timeout=cfg.subprocess_timeout,
-    )
-    logger.info("Step 1 Complete: Extracted and merged %d entries.", len(db_entries))
+    logger.info("Step 1 Complete: Extracted and copied %d entries.", len(db_entries))
 
 
 def extract_categorized_whitelists(cfg: AppConfig) -> Dict[str, FrozenSet[str]]:
