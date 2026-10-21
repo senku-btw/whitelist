@@ -284,26 +284,18 @@ def process_step1(cfg: AppConfig) -> None:
 
     and purge all whitelist.txt entries from the database.
     """
-    db_entries_raw = execute_read(
-        cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,)
-    )
+    db_entries_raw = execute_read(cfg, SQL_GET_DEFAULT_ENTRIES, (DOMAIN_TYPE_EXACT,))
     db_entries = frozenset(sanitize_domain(row[0]) for row in db_entries_raw)
 
     txt_entries: Set[str] = set()
     if cfg.whitelist_txt_path.exists():
         try:
-            with open(
-                cfg.whitelist_txt_path, "r", encoding="utf-8"
-            ) as file_obj:
+            with open(cfg.whitelist_txt_path, "r", encoding="utf-8") as file_obj:
                 txt_entries = {
-                    sanitize_domain(line)
-                    for line in file_obj
-                    if line.strip()
+                    sanitize_domain(line) for line in file_obj if line.strip()
                 }
         except IOError as exc:
-            raise RuntimeError(
-                f"Failed to read existing whitelist.txt: {exc}"
-            ) from exc
+            raise RuntimeError(f"Failed to read existing whitelist.txt: {exc}") from exc
 
     combined_entries = sorted(list(db_entries | txt_entries))
     write_atomic(cfg.whitelist_txt_path, combined_entries)
