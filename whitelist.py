@@ -122,12 +122,15 @@ class GroupAssignmentSpec:
     def __post_init__(self) -> None:
         """Validate SQL identifiers to ensure secure execution."""
         if self.table not in ALLOWED_TABLES or self.link_table not in ALLOWED_TABLES:
-            raise ValueError(f"Unauthorized table name in spec: {self.table}, {self.link_table}")
+            raise ValueError(
+                f"Unauthorized table name in spec: {self.table}, {self.link_table}"
+            )
         if self.fk_col not in ALLOWED_COLUMNS:
             raise ValueError(f"Unauthorized column name in spec: {self.fk_col}")
 
 
 # --- Core Utilities ---
+
 
 def sanitize_domain(domain: str) -> str:
     """Sanitize and normalize a domain string securely."""
@@ -151,7 +154,9 @@ def format_filename(category: str, base_dir: Path) -> Path:
     """Format category name into a safe filename protected against path traversal."""
     if not category:
         raise ValueError("Category name cannot be empty")
-    safe_chars = "".join(c for c in category if c.isalnum() or c in (" ", "_", "-")).strip()
+    safe_chars = "".join(
+        c for c in category if c.isalnum() or c in (" ", "_", "-")
+    ).strip()
     safe_name = re.sub(r"\s+", "_", safe_chars) + ".txt"
 
     target_path = (base_dir / safe_name).resolve()
@@ -216,6 +221,7 @@ def write_atomic(filepath: Path, lines: Iterable[str]) -> None:
 
 # --- Database Interactions ---
 
+
 def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
     """Execute a read-only SQL query against the Pi-hole database safely."""
     try:
@@ -229,6 +235,7 @@ def execute_read(cfg: AppConfig, query: str, params: Tuple = ()) -> List[Tuple]:
 
 
 # --- Business Logic ---
+
 
 def process_step1(cfg: AppConfig) -> None:
     """Copy default DB entries into whitelist.txt without removing them from the database."""
@@ -284,7 +291,9 @@ def write_category_files(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) 
 
     for category, domains in categories.items():
         if category.lower() in IMMUTABLE_CATEGORIES:
-            logger.info("Skipping write/overwrite for immutable file: %s.txt", category.lower())
+            logger.info(
+                "Skipping write/overwrite for immutable file: %s.txt", category.lower()
+            )
             continue
         file_path = format_filename(category, cfg.whitelists_dir)
         write_atomic(file_path, sorted(list(domains)))
@@ -315,10 +324,16 @@ def _recreate_groups(
     """Rebuild non-default group definitions safely and return group map."""
     cursor.execute('SELECT id FROM "group" WHERE id = ?', (DEFAULT_GROUP_ID,))
     if cursor.fetchone() is None:
-        raise RuntimeError(f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing.")
+        raise RuntimeError(
+            f"Integrity Error: Default group (id={DEFAULT_GROUP_ID}) missing."
+        )
 
-    cursor.execute("DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
-    cursor.execute("DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,))
+    cursor.execute(
+        "DELETE FROM client_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,)
+    )
+    cursor.execute(
+        "DELETE FROM domainlist_by_group WHERE group_id != ?", (DEFAULT_GROUP_ID,)
+    )
     cursor.execute('DELETE FROM "group" WHERE id != ?', (DEFAULT_GROUP_ID,))
 
     sorted_categories = sorted(categories.keys())
@@ -366,9 +381,13 @@ def _assign_standard_domains(cursor: sqlite3.Cursor, group_map: Dict[str, int]) 
         )
 
 
-def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]) -> None:
+def _assign_regex_allow_groups(
+    cursor: sqlite3.Cursor, group_map: Dict[str, int]
+) -> None:
     """Enforce exclusive group assignment for regex allow lists securely."""
-    cursor.execute("SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,))
+    cursor.execute(
+        "SELECT id, comment FROM domainlist WHERE type = ?", (DOMAIN_TYPE_REGEX,)
+    )
     regex_entries = cursor.fetchall()
 
     for d_id, comment in regex_entries:
@@ -379,7 +398,9 @@ def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]
                 if tag in group_map:
                     matched_gids.add(group_map[tag])
 
-        cursor.execute("DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,))
+        cursor.execute(
+            "DELETE FROM domainlist_by_group WHERE domainlist_id = ?", (d_id,)
+        )
 
         if matched_gids:
             cursor.executemany(
@@ -482,7 +503,9 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
             len(categories),
         )
     except sqlite3.Error as exc:
-        raise RuntimeError(f"Database transaction failed during group rebuild: {exc}") from exc
+        raise RuntimeError(
+            f"Database transaction failed during group rebuild: {exc}"
+        ) from exc
 
 
 def export_regex_allowlist(cfg: AppConfig) -> None:
@@ -578,6 +601,7 @@ def push_to_github(cfg: AppConfig) -> None:
 
 
 # --- Main Execution Control ---
+
 
 def main() -> None:
     """Run the primary Pi-hole whitelist automation routine securely."""
