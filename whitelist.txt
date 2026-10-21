@@ -1,7 +1,10 @@
 0.gravatar.com
 0.wikipedia.com
+111movies.net
 1password.com
 1password.eu
+67movies.net
+67movies.st
 addons.cdn.mozilla.net
 addons.mozilla.org
 adguard.com
@@ -295,6 +298,8 @@ pi-hole.net
 pl.wikipedia.com
 placehold.it
 placeholdit.imgix.net
+player.cinezo.live
+player.vidlove.cc
 player.vimeo.com
 podcast.darknetdiaries.com
 privacy.sexy
@@ -380,6 +385,8 @@ use.fontawesome.com
 user-images.githubusercontent.com
 vanguard.com
 vault.bitwarden.com
+vidlink.pro
+vidup.to
 vimeo.com
 vimeocdn.com
 virtualbox.org
@@ -389,6 +396,7 @@ visualstudio.com
 vivo.sx
 voe.sx
 vscode-sync.trafficmanager.net
+vsembed.ru
 wikimedia.org
 wikipedia.com
 wikipedia.org

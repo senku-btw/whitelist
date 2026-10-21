@@ -1,4 +1,5 @@
 about.youtube.com
+accounts.youtube.com
 api.youtube.com
 creators.youtube.com
 gaming.youtube.com
@@ -35,6 +36,7 @@ youtube.googleapis.com
 youtubei.googleapis.com
 yt.moatads.com
 yt3.ggpht.com
+yt3.googleusercontent.com
 ytimg.com
 ytimg.l.google.com
 z.googlevideo.com
