@@ -118,6 +118,7 @@ ris.api.iris.microsoft.com
 s-ring.msedge.net
 s.gateway.messenger.live.com
 self.events.data.microsoft.com
+settings-win.data.microsoft.com
 sfbassets.com
 share.microsoft.com
 skype.com
