@@ -5,6 +5,7 @@
 1password.eu
 67movies.net
 67movies.st
+a.root-servers.net
 adblock-tester.com
 addons.cdn.mozilla.net
 addons.mozilla.org
@@ -41,6 +42,7 @@ avatars0.githubusercontent.com
 avatars1.githubusercontent.com
 avatars2.githubusercontent.com
 avatars3.githubusercontent.com
+b.root-servers.net
 bbc.co.uk
 bbc.com
 bitdefender.net
@@ -48,6 +50,7 @@ bitwarden.com
 braintreegateway.com
 bs.to
 bugzilla.mozilla.org
+c.root-servers.net
 cacerts.digicert.com
 camo.githubusercontent.com
 canonical.com
@@ -90,6 +93,7 @@ crl.usertrust.com
 crl.verisign.com
 crl4.digicert.com
 cz.wikipedia.com
+d.root-servers.net
 dash.cloudflare.com
 dashboard.snapcraft.io
 dashlane.com
@@ -110,6 +114,7 @@ dist.torproject.org
 dl.flathub.org
 dl.humble.com
 dl.opensubtitles.org
+dns.quad9.net
 dovetail-router.u.prx.tech
 dovetail.prxu.org
 download.mozilla.org
@@ -118,6 +123,7 @@ download.torproject.org
 download.visualstudio.microsoft.com
 download.wikipedia.com
 duckduckgo.com
+e.root-servers.net
 e5.sk
 easylist-downloads.adblockplus.org
 en.gravatar.com
@@ -140,6 +146,7 @@ f-droid.org
 f-secure.com
 f-secure.com.pl
 f-secure.net
+f.root-servers.net
 fastly.net
 fedorapeople.org
 fedoraproject.org
@@ -157,6 +164,7 @@ ftp.de.debian.org
 ftp.mozilla.org
 ftprivacy.cloud
 g.api.mega.co.nz
+g.root-servers.net
 g.static.mega.co.nz
 gdlp01.c-wss.com
 get.xda-developers.com
@@ -200,6 +208,7 @@ guardianproject.info
 gui.godaddy.com
 gumtree.com
 gumtree.com.au
+h.root-servers.net
 hash.github.com
 he.wikipedia.com
 hls.ted.com
@@ -211,6 +220,7 @@ i-dont-care-about-cookies.eu
 i.ebayimg.com
 i.ibb.co
 i.imgur.com
+i.root-servers.net
 i.scdn.co
 i.vimeocdn.com
 id.m.wikipedia.com
@@ -222,13 +232,16 @@ imgix.net
 intel.com
 intel.com.au
 it.wikipedia.com
+j.root-servers.net
 jp.wikipedia.com
 jquery.com
 jsdelivr.net
+k.root-servers.net
 kas-labs.com
 kaspersky-labs.com
 kaspersky.com
 keystone.mwbsys.com
+l.root-servers.net
 labkas.com
 lacerta.es
 lastfm-img2.akamaized.net
@@ -240,6 +253,7 @@ lm.licenses.adobe.com
 m.codemasters.com
 m.imgur.com
 m.media-amazon.com
+m.root-servers.net
 m.stripe.com
 mail.protonmail.com
 mail.xda-developers.com
@@ -300,6 +314,7 @@ paypal.de
 paypalobjects.com
 pdst.fm
 pi-hole.net
+pi.hole
 pl.wikipedia.com
 placehold.it
 placeholdit.imgix.net
@@ -307,6 +322,7 @@ player.cinezo.live
 player.vidlove.cc
 player.vimeo.com
 podcast.darknetdiaries.com
+primary.hole
 privacy.sexy
 prod-www.malwarebytes.com
 protonmail.ch
@@ -315,6 +331,7 @@ protonmail.uservoice.com
 proxer.me
 pscrb.fm
 push.chocolatey.org
+quad9.net
 raindrop.io
 raw.github.com
 raw.githubusercontent.com
@@ -330,6 +347,7 @@ s4.symcb.com
 s5.symcb.com
 sa.symcb.com
 search.vimeo.com
+secondary.hole
 secure.avangate.com
 secure.gravatar.com
 secure.netflix.com
