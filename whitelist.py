@@ -393,9 +393,9 @@ def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]
             )
 
 
+# pylint: disable=too-many-locals
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely within an atomic transaction."""
-    # pylint: disable=too-many-locals
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
@@ -477,7 +477,10 @@ def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> 
                         client_group_links,
                     )
 
-        logger.info("Steps 2 & 3 Complete: Successfully rebuilt %d database groups.", len(categories))
+        logger.info(
+            "Steps 2 & 3 Complete: Successfully rebuilt %d database groups.",
+            len(categories),
+        )
     except sqlite3.Error as exc:
         raise RuntimeError(f"Database transaction failed during group rebuild: {exc}") from exc
 
