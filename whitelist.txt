@@ -24,6 +24,7 @@ api.opensubtitles.org
 api.paypal.com
 api.raindrop.io
 api.snapcraft.io
+api.vidlove.cc
 api.vimeo.com
 app-api.ted.com
 app.raindrop.io
@@ -259,6 +260,7 @@ mega.nz
 microsoft.com
 mirrorlist.centos.org
 mobileproxy.space
+moon.zenoak.top
 mozilla.com
 mozilla.net
 mozilla.org
