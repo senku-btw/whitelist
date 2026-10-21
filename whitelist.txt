@@ -11,7 +11,6 @@ amazonaws.com
 americanexpress.com
 amzn.com
 amzn.to
-github.githubassets.com
 anchor.fm
 api-global.netflix.com
 api.adguard.com
@@ -113,6 +112,7 @@ download.visualstudio.microsoft.com
 download.wikipedia.com
 duckduckgo.com
 e5.sk
+easylist-downloads.adblockplus.org
 en.gravatar.com
 en.m.wikipedia.com
 en.m.wikipedia.org
@@ -175,6 +175,7 @@ github.com
 github.community
 github.developerdan.com
 github.devtools.go.com
+github.githubassets.com
 github.hubspot.com
 github.io
 github.map.fastly.net
@@ -189,6 +190,7 @@ gl.gravatar.com
 gravatar.com
 greasyfork.org
 guardianproject.info
+gui.godaddy.com
 gumtree.com
 gumtree.com.au
 hash.github.com
@@ -221,6 +223,7 @@ kaspersky-labs.com
 kaspersky.com
 keystone.mwbsys.com
 labkas.com
+lacerta.es
 lastfm-img2.akamaized.net
 lastpass.com
 launchpad.net
