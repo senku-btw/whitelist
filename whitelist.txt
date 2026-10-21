@@ -5,6 +5,7 @@
 1password.eu
 67movies.net
 67movies.st
+adblock-tester.com
 addons.cdn.mozilla.net
 addons.mozilla.org
 adguard.com
