@@ -19,7 +19,6 @@ configuration.apple.com.akadns.net
 crl.apple.com
 crl.entrust.net
 crl3.digicert.com
-crl4.digicert.com
 cssubmissions.apple.com
 deviceenrollment.apple.com
 deviceservices-external.apple.com
@@ -51,8 +50,6 @@ m.store.apple.com
 mdmenrollment.apple.com
 mesu.apple.com
 ns.itunes.apple.com
-ocsp.apple.com
-ocsp.digicert.com
 ocsp.entrust.net
 ocsp.verisign.net
 oscdn.apple.com
@@ -60,7 +57,6 @@ osrecovery.apple.com
 phobos.apple.com
 ppq.apple.com
 s.mzstatic.com
-sa.symcb.com
 secure-appldnld.apple.com
 serverstatus.apple.com
 setup.icloud.com

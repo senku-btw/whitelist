@@ -4,7 +4,6 @@ aiv-cdn.net
 aiv-delivery.net
 amazon.com
 amazonvideo.com
-amzn.to
 arcus-uswest.amazon.com
 atv-ext-eu.amazon.com
 atv-ext-fe.amazon.com

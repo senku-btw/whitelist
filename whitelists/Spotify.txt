@@ -11,7 +11,6 @@ audio-fa.spotify.com
 audio-sp.spotify.com
 chtbl.com
 exp.wg.spotify.com
-i.scdn.co
 market.spotify.com
 mobile-ap.spotify.com
 open.spotify.com

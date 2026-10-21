@@ -1,7 +1,6 @@
 1drv.com
 api.live.net
 apis.live.net
-developer.apple.com
 docs.live.net
 fabric.io
 favorites.live.com
@@ -20,7 +19,6 @@ skyapi.live.net
 skydrive.live.com
 snapi.live.net
 storage.msn.com
-support.apple.com
 token.cp.microsoft.com
 tokensit.cp.microsoft-tst.com
 vas.samsungapps.com
