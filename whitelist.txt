@@ -105,6 +105,7 @@ developer.vimeo.com
 developers.cloudflare.com
 deviantart.com
 digicert.com
+dist.torproject.org
 dl.flathub.org
 dl.humble.com
 dl.opensubtitles.org
@@ -112,6 +113,7 @@ dovetail-router.u.prx.tech
 dovetail.prxu.org
 download.mozilla.org
 download.sysinternals.com
+download.torproject.org
 download.visualstudio.microsoft.com
 download.wikipedia.com
 duckduckgo.com
