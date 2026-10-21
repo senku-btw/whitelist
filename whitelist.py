@@ -22,8 +22,12 @@ IMMUTABLE_CATEGORIES: FrozenSet[str] = frozenset()
 GROUP_IMMUTABLES = frozenset({"healthcheck", "hosts"})
 
 # Strict allowlists for SQL identifiers to prevent injection via formatting
-ALLOWED_TABLES = frozenset({"domainlist", "domainlist_by_group", "adlist", "adlist_by_group", "group"})
-ALLOWED_COLUMNS = frozenset({"id", "domainlist_id", "adlist_id", "group_id", "domain", "type", "comment"})
+ALLOWED_TABLES = frozenset(
+    {"domainlist", "domainlist_by_group", "adlist", "adlist_by_group", "group"}
+)
+ALLOWED_COLUMNS = frozenset(
+    {"id", "domainlist_id", "adlist_id", "group_id", "domain", "type", "comment"}
+)
 
 # --- SQL Queries ---
 SQL_GET_DEFAULT_ENTRIES = """
@@ -149,7 +153,7 @@ def format_filename(category: str, base_dir: Path) -> Path:
         raise ValueError("Category name cannot be empty")
     safe_chars = "".join(c for c in category if c.isalnum() or c in (" ", "_", "-")).strip()
     safe_name = re.sub(r"\s+", "_", safe_chars) + ".txt"
-    
+
     target_path = (base_dir / safe_name).resolve()
     if not target_path.is_relative_to(base_dir.resolve()):
         raise SecurityError(f"Path traversal attempt detected: {category}")
@@ -158,7 +162,6 @@ def format_filename(category: str, base_dir: Path) -> Path:
 
 class SecurityError(Exception):
     """Raised when a security constraint or boundary is violated."""
-    pass
 
 
 def run_command(
@@ -392,16 +395,25 @@ def _assign_regex_allow_groups(cursor: sqlite3.Cursor, group_map: Dict[str, int]
 
 def rebuild_db_groups(cfg: AppConfig, categories: Dict[str, FrozenSet[str]]) -> None:
     """Rebuild Pi-hole DB groups safely within an atomic transaction."""
+    # pylint: disable=too-many-locals
     try:
         with sqlite3.connect(cfg.db_path, timeout=cfg.db_timeout) as conn:
             conn.execute("PRAGMA foreign_keys = ON")
             cursor = conn.cursor()
-            
+
             with conn:
-                cursor.execute("UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
-                cursor.execute("UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'")
-                cursor.execute("UPDATE domainlist SET comment = 'hosts' WHERE comment = 'host'")
-                cursor.execute("UPDATE adlist SET comment = 'hosts' WHERE comment = 'host'")
+                cursor.execute(
+                    "UPDATE domainlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'"
+                )
+                cursor.execute(
+                    "UPDATE adlist SET comment = 'healthcheck' WHERE comment = 'healtcheck'"
+                )
+                cursor.execute(
+                    "UPDATE domainlist SET comment = 'hosts' WHERE comment = 'host'"
+                )
+                cursor.execute(
+                    "UPDATE adlist SET comment = 'hosts' WHERE comment = 'host'"
+                )
 
                 cursor.execute(SQL_GET_CLIENT_BACKUPS, (DEFAULT_GROUP_ID,))
                 client_backups = cursor.fetchall()
@@ -490,7 +502,9 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
         if tag_match or group_match:
             continue
 
-        sanitized_pattern = "".join(char for char in domain if char.isprintable() and not char.isspace())
+        sanitized_pattern = "".join(
+            char for char in domain if char.isprintable() and not char.isspace()
+        )
         safe_comment = comment.strip() if comment and comment.strip() else "Default"
 
         regex_dict.setdefault(safe_comment, set()).add(sanitized_pattern)
@@ -503,7 +517,7 @@ def export_regex_allowlist(cfg: AppConfig) -> None:
     regex_dir = (cfg.repo_dir / "regex").resolve()
     if not regex_dir.is_relative_to(cfg.repo_dir.resolve()):
         raise SecurityError("Invalid regex export directory path.")
-    
+
     regex_dir.mkdir(parents=True, exist_ok=True)
     allowlist_path = regex_dir / "allowlist.txt"
     write_atomic(allowlist_path, output_lines)
@@ -564,6 +578,7 @@ def push_to_github(cfg: AppConfig) -> None:
 
 def main() -> None:
     """Run the primary Pi-hole whitelist automation routine securely."""
+    # pylint: disable=broad-exception-caught
     logger.info("Initializing Pi-hole Whitelist Automation...")
     try:
         cfg = AppConfig.load()
