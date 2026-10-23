@@ -1,7 +1,0 @@
-fg.download.windowsupdate.com.c.footprint.net
-fg.ds.b1.download.windowsupdate.com
-fg.v4.download.windowsupdate.com
-fgipv6.download.windowsupdate.com.mwcname.com
-geo-prod.do.dsp.mp.microsoft.com
-sls.update.microsoft.com.akadns.net
-tlu.dl.delivery.mp.microsoft.com
