@@ -1,8 +1,0 @@
-account.live.com
-acctcdn.msauth.net
-acctcdn.msftauth.net
-auth.microsoft.com
-ccs.login.microsoftonline.com
-g.live.com
-login.live.com
-login.microsoftonline.com
